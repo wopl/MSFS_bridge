@@ -1,0 +1,8 @@
+================================================================================
+Linker Errors
+Generated: 2026-04-21T11:55:46.657Z
+Total Errors: 1
+================================================================================
+
+[LNK1104] (MSVC)
+cannot open file 'C:\Users\Plettscher\Data\git\arduino\MSFS_bridge\build\Release\MSFS_bridge.exe' [C:\Users\Plettscher\Data\git\arduino\MSFS_bridge\build\MSFS_bridge.vcxproj]

@@ -1,0 +1,16 @@
+{
+    // Force CMake Tools to use Visual Studio generator and MSVC for this project only
+    "cmake.generator": "Visual Studio 18 2026",
+    "cmake.preferredGenerators": ["Visual Studio 18 2026"],
+    "cmake.configureOnOpen": true,
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "cmake.buildType": "Release",
+    "cmake.exportCompileCommandsFile": true,
+    "cmake.configureArgs": [
+        "-DCMAKE_BUILD_TYPE=Release"
+    ],
+    "cmake.buildArgs": [
+        "--config",
+        "Release"
+    ]
+}

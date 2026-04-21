@@ -1,0 +1,8 @@
+[
+{
+  "directory": "C:/Users/Plettscher/Data/git/arduino/MSFS_bridge/build",
+  "command": "C:\\MinGW\\bin\\g++.exe  @CMakeFiles/MSFS_bridge.dir/includes_CXX.rsp -O3 -DNDEBUG -std=gnu++1z -o CMakeFiles\\MSFS_bridge.dir\\main.cpp.obj -c C:\\Users\\Plettscher\\Data\\git\\arduino\\MSFS_bridge\\main.cpp",
+  "file": "C:/Users/Plettscher/Data/git/arduino/MSFS_bridge/main.cpp",
+  "output": "CMakeFiles/MSFS_bridge.dir/main.cpp.obj"
+}
+]
