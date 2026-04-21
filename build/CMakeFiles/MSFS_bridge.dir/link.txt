@@ -1,3 +1,0 @@
-"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E rm -f CMakeFiles\MSFS_bridge.dir/objects.a
-C:\MinGW\bin\ar.exe qc CMakeFiles\MSFS_bridge.dir/objects.a @CMakeFiles\MSFS_bridge.dir\objects1.rsp
-C:\MinGW\bin\g++.exe -O3 -DNDEBUG -Wl,--whole-archive CMakeFiles\MSFS_bridge.dir/objects.a -Wl,--no-whole-archive -o MSFS_bridge.exe -Wl,--out-implib,libMSFS_bridge.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\MSFS_bridge.dir\linkLibs.rsp

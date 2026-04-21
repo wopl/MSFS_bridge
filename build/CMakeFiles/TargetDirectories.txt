@@ -1,3 +1,0 @@
-C:/Users/Plettscher/Data/git/arduino/MSFS_bridge/build/CMakeFiles/MSFS_bridge.dir
-C:/Users/Plettscher/Data/git/arduino/MSFS_bridge/build/CMakeFiles/ALL_BUILD.dir
-C:/Users/Plettscher/Data/git/arduino/MSFS_bridge/build/CMakeFiles/ZERO_CHECK.dir
