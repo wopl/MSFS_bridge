@@ -1,0 +1,38 @@
+# C++/CMake build artifacts
+build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.sln
+*.vcxproj*
+*.pdb
+*.obj
+*.exe
+*.dll
+*.lib
+*.exp
+*.log
+*.user
+*.dir/
+*.filters
+*.idb
+*.ipch
+*.aps
+*.ncb
+*.sdf
+*.opensdf
+*.tlog
+*.lastbuildstate
+*.suo
+*.sdf
+*.cache
+*.db
+*.VC.db
+*.VC.opendb
+*.recipe
+# VS Code settings
+.vscode/
+# OS generated files
+.DS_Store
+Thumbs.db
