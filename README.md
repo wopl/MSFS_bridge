@@ -21,3 +21,11 @@ A minimal C++ bridge application to connect your COM_NAV implementation with Mic
 ## Next Steps
 - Implement communication with your COM_NAV system.
 - Map and forward data between COM_NAV and MSFS2024 as needed.
+
+## Firewall Configuration
+To allow this application to communicate with MSFS2024 via SimConnect, ensure your firewall allows inbound and outbound connections for both this executable and SimConnect. You may need to add rules for:
+- MSFS_bridge.exe
+- SimConnect.dll (if used externally)
+- The port configured in SimConnect.xml (default: 500)
+
+Refer to the MSFS SDK documentation for more details on SimConnect network configuration and firewall setup.

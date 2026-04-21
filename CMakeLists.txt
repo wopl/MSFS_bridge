@@ -1,4 +1,15 @@
-﻿cmake_minimum_required(VERSION 3.10)
+﻿# Set default build type to Release if not specified
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+	set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
+
+# Force Visual Studio 2026 generator if available
+if (CMAKE_GENERATOR MATCHES "Visual Studio")
+	message(STATUS "Using generator: ${CMAKE_GENERATOR}")
+else()
+	set(CMAKE_GENERATOR "Visual Studio 18 2026" CACHE STRING "Force VS2026 generator" FORCE)
+endif()
+cmake_minimum_required(VERSION 3.10)
 project(MSFS_bridge)
 
 set(CMAKE_CXX_STANDARD 17)
