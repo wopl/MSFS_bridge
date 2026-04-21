@@ -1,0 +1,4 @@
+#pragma once
+
+#define EVENT_COM1_STBY_SET 0x00011010
+#define EVENT_PARK_BRAKES 0x00011000

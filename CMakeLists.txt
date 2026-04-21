@@ -14,14 +14,28 @@ project(MSFS_bridge)
 
 set(CMAKE_CXX_STANDARD 17)
 
-# Set this to your SimConnect SDK path!
-set(SIMCONNECT_SDK "C:/MSFS 2024 SDK/SimConnect SDK")
-include_directories(${SIMCONNECT_SDK}/include)
-link_directories(${SIMCONNECT_SDK}/lib/static)
 
-add_executable(MSFS_bridge main.cpp)
 
-# Link SimConnect and additional Windows libraries required by SimConnect
+# Set this to your FlightSim SDK path!
+set(FLIGHTSIM_SDK "C:/MSFS 2024 SDK/SimConnect SDK")
+include_directories(${FLIGHTSIM_SDK}/include)
+link_directories(${FLIGHTSIM_SDK}/lib/static)
+
+
+# Add include directory
+include_directories(${CMAKE_SOURCE_DIR}/include)
+
+
+# Gather only FlightSim and main/controller sources
+set(SOURCES
+	src/FlightSimBridge.cpp
+	src/FlightSimClient.cpp
+	src/MSFSController.cpp
+	src/main.cpp
+)
+add_executable(MSFS_bridge ${SOURCES})
+
+# Link FlightSim and additional Windows libraries required by FlightSim
 target_link_libraries(MSFS_bridge SimConnect Ws2_32 Shlwapi)
 
 # Always build in Release mode
