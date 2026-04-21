@@ -3,8 +3,10 @@
 #include <thread>
 #include <chrono>
 #include <iostream>
-#include "msfs_events.hpp"
 
+#include "msfs_events.hpp"
+#include <queue>
+#include <mutex>
 
 struct MsfEvent {
     std::string name;
@@ -13,12 +15,26 @@ struct MsfEvent {
     std::string simEventName;
 };
 
+
+enum class FreqChangeSource {
+    UDP,
+    TIMER
+};
+
+struct FreqChangeRequest {
+    FreqChangeSource source;
+};
+
 class MSFSController {
 public:
     MSFSController();
     void run();
     void dispatchEvent(const MsfEvent& evt);
+    void queueFreqChange(FreqChangeSource src);
+    unsigned int com1_freq;
 private:
     FlightSimBridge bridge;
-    unsigned int com1_freq;
+    std::queue<FreqChangeRequest> freqQueue;
+    std::mutex queueMutex;
 };
+

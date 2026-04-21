@@ -31,6 +31,7 @@ set(SOURCES
 	src/FlightSimBridge.cpp
 	src/FlightSimClient.cpp
 	src/MSFSController.cpp
+	src/UdpReceiver.cpp
 	src/main.cpp
 )
 add_executable(MSFS_bridge ${SOURCES})

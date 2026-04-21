@@ -1,4 +1,11 @@
 #pragma once
 
+// Event IDs for COM1 commands
+#define EVENT_COM1_STBY_FINE_DOWN 0x00011011
+#define EVENT_COM1_STBY_FINE_UP   0x00011012
+#define EVENT_COM1_STBY_COARSE_DOWN 0x00011013
+#define EVENT_COM1_STBY_COARSE_UP   0x00011014
+#define EVENT_COM1_STBY_FLIP        0x00011015
 #define EVENT_COM1_STBY_SET 0x00011010
 #define EVENT_PARK_BRAKES 0x00011000
+// Optionally add more event IDs as needed
