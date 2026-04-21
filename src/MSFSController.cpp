@@ -1,11 +1,17 @@
 #include "MSFSController.hpp"
 #include <utility>
 
-void MSFSController::queueFreqChange(FreqChangeSource src) {
+void MSFSController::queueFreqChange(FreqChangeType type) {
     std::lock_guard<std::mutex> lock(queueMutex);
-    freqQueue.push(FreqChangeRequest{src});
-    std::string srcStr = (src == FreqChangeSource::TIMER) ? "TIMER" : "UDP";
-    std::cout << "[QUEUE] Pushed FreqChangeRequest from " << srcStr << ". Queue size now: " << freqQueue.size() << std::endl;
+    freqQueue.push(FreqChangeRequest{type});
+    std::string typeStr;
+    switch (type) {
+        case FreqChangeType::FINE_UP: typeStr = "FINE_UP"; break;
+        case FreqChangeType::FINE_DOWN: typeStr = "FINE_DOWN"; break;
+        case FreqChangeType::COARSE_UP: typeStr = "COARSE_UP"; break;
+        case FreqChangeType::COARSE_DOWN: typeStr = "COARSE_DOWN"; break;
+    }
+    std::cout << "[QUEUE] Pushed FreqChangeRequest type " << typeStr << ". Queue size now: " << freqQueue.size() << std::endl;
 }
 
 MSFSController::MSFSController() : bridge(), com1_freq(118000000) {}
@@ -32,28 +38,43 @@ void MSFSController::run() {
     com1_freq = 118000000;
     // auto lastTimer = std::chrono::steady_clock::now(); // [TIMER] Commented out
     while (true) {
-        // Timer pushes to queue (commented out)
-        // auto now = std::chrono::steady_clock::now();
-        // if (std::chrono::duration_cast<std::chrono::seconds>(now - lastTimer).count() >= 3) {
-        //     std::cout << "[TIMER] 3s timer event triggered (pushing to queue)" << std::endl;
-        //     queueFreqChange(FreqChangeSource::TIMER);
-        //     lastTimer = now;
-        // }
         // Main thread processes queue
         {
             std::lock_guard<std::mutex> lock(queueMutex);
             while (!freqQueue.empty()) {
                 auto req = freqQueue.front();
                 freqQueue.pop();
-                std::string src = (req.source == FreqChangeSource::TIMER) ? "TIMER" : "UDP";
-                std::cout << "[MAIN] Processing COM1 Fine Up event from " << src << std::endl;
+                std::string typeStr;
+                int step = 0;
+                switch (req.type) {
+                    case FreqChangeType::FINE_UP:
+                        typeStr = "FINE_UP";
+                        step = 5000;
+                        break;
+                    case FreqChangeType::FINE_DOWN:
+                        typeStr = "FINE_DOWN";
+                        step = -5000;
+                        break;
+                    case FreqChangeType::COARSE_UP:
+                        typeStr = "COARSE_UP";
+                        step = 1000000; // 1 MHz
+                        break;
+                    case FreqChangeType::COARSE_DOWN:
+                        typeStr = "COARSE_DOWN";
+                        step = -1000000; // 1 MHz
+                        break;
+                }
+                std::cout << "[MAIN] Processing COM1 event type " << typeStr << std::endl;
                 std::cout << "[MAIN] com1_freq before: " << com1_freq << std::endl;
-                com1_freq += 5000; // 5 kHz step
-                if (com1_freq > 136990000)
-                    com1_freq = 118000000;
+                int next_freq = static_cast<int>(com1_freq) + step;
+                if (next_freq > 136990000)
+                    next_freq = 118000000;
+                if (next_freq < 118000000)
+                    next_freq = 136990000;
+                com1_freq = static_cast<unsigned int>(next_freq);
                 std::cout << "[MAIN] com1_freq after: " << com1_freq << std::endl;
                 std::cout << "[MAIN] SimConnect connected: " << (bridge.isConnected() ? "YES" : "NO") << std::endl;
-                MsfEvent freqEvt{"COM1 Frequency (" + src + ")", EVENT_COM1_STBY_SET, com1_freq, "COM_STBY_RADIO_SET_HZ"};
+                MsfEvent freqEvt{"COM1 Frequency (" + typeStr + ")", EVENT_COM1_STBY_SET, com1_freq, "COM_STBY_RADIO_SET_HZ"};
                 dispatchEvent(freqEvt);
             }
         }

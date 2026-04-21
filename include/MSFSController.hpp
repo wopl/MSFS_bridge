@@ -15,14 +15,20 @@ struct MsfEvent {
     std::string simEventName;
 };
 
-
 enum class FreqChangeSource {
     UDP,
     TIMER
 };
 
+enum class FreqChangeType {
+    FINE_UP,
+    FINE_DOWN,
+    COARSE_UP,
+    COARSE_DOWN
+};
+
 struct FreqChangeRequest {
-    FreqChangeSource source;
+    FreqChangeType type;
 };
 
 class MSFSController {
@@ -30,7 +36,7 @@ public:
     MSFSController();
     void run();
     void dispatchEvent(const MsfEvent& evt);
-    void queueFreqChange(FreqChangeSource src);
+    void queueFreqChange(FreqChangeType type);
     unsigned int com1_freq;
 private:
     FlightSimBridge bridge;

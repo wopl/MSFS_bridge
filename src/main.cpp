@@ -38,9 +38,18 @@ void handleUdpCommand(const std::string& packet, MSFSController& controller) {
     std::cout << "[ESP32] Received event: '" << cmd << "'\n";
     if (cmd == CMD_COM1_STBY_FINE_UP_833) {
         std::cout << "[ESP32] COM1 Fine Up event requested (queueing for main thread)" << std::endl;
-        controller.queueFreqChange(FreqChangeSource::UDP);
+        controller.queueFreqChange(FreqChangeType::FINE_UP);
+    } else if (cmd == CMD_COM1_STBY_FINE_DOWN_833) {
+        std::cout << "[ESP32] COM1 Fine Down event requested (queueing for main thread)" << std::endl;
+        controller.queueFreqChange(FreqChangeType::FINE_DOWN);
+    } else if (cmd == CMD_COM1_STBY_COARSE_UP_833) {
+        std::cout << "[ESP32] COM1 Coarse Up event requested (queueing for main thread)" << std::endl;
+        controller.queueFreqChange(FreqChangeType::COARSE_UP);
+    } else if (cmd == CMD_COM1_STBY_COARSE_DOWN_833) {
+        std::cout << "[ESP32] COM1 Coarse Down event requested (queueing for main thread)" << std::endl;
+        controller.queueFreqChange(FreqChangeType::COARSE_DOWN);
     } else {
-        std::cout << "[UDP-TRACE] Command did not match CMD_COM1_STBY_FINE_UP_833 ('" << CMD_COM1_STBY_FINE_UP_833 << "')\n";
+        std::cout << "[UDP-TRACE] Command did not match known COM1 commands\n";
     }
     // The following event handlers are kept for future use:
     // else if (cmd == CMD_COM1_FREQ_UP) {
