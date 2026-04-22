@@ -1,10 +1,11 @@
 // #############################################################################
 // ##                                                                         ##
-// ## EventTypes.hpp                              (c) Wolfram Plettscher 04/2026 ##
+// ## EventTypes.hpp                           (c) Wolfram Plettscher 04/2026 ##
 // ##                                                                         ##
 // #############################################################################
 #pragma once
 #include <string>
+#include <unordered_map>
 
 // Enum for all event types
 enum class EventType {
@@ -30,27 +31,30 @@ struct MsfEvent {
 
 // Normalized event registry entry with direct MSFS event name mapping
 struct EventRegistryEntry {
-    const char* udpCommand;
     EventType type;
     const char* msfsEventName;
 };
 
 static const EventRegistryEntry eventRegistry[] = {
-    {"sim/radios/stby_com1_fine_up_833",   EventType::COM1_FREQ_FINE_UP,   "COM_STBY_RADIO_SET_HZ"},
-    {"sim/radios/stby_com1_fine_down_833", EventType::COM1_FREQ_FINE_DOWN, "COM_STBY_RADIO_SET_HZ"},
-    {"sim/radios/stby_com1_coarse_up_833", EventType::COM1_FREQ_COARSE_UP, "COM_STBY_RADIO_SET_HZ"},
-    {"sim/radios/stby_com1_coarse_down_833", EventType::COM1_FREQ_COARSE_DOWN, "COM_STBY_RADIO_SET_HZ"},
+    {EventType::COM1_FREQ_FINE_UP,   "COM_STBY_RADIO_SET_HZ"},
+    {EventType::COM1_FREQ_FINE_DOWN, "COM_STBY_RADIO_SET_HZ"},
+    {EventType::COM1_FREQ_COARSE_UP, "COM_STBY_RADIO_SET_HZ"},
+    {EventType::COM1_FREQ_COARSE_DOWN, "COM_STBY_RADIO_SET_HZ"},
     // Add more as needed
 };
 
-// Central MSFS event info mapping for each event name
-struct MsfsEventInfo {
-    const char* msfsEventName;
-    unsigned int msfsEventId;
+// O(1) UDP command to EventType lookup
+static const std::unordered_map<std::string, EventType> udpCommandToEventType = {
+    {"sim/radios/stby_com1_fine_up_833",   EventType::COM1_FREQ_FINE_UP},
+    {"sim/radios/stby_com1_fine_down_833", EventType::COM1_FREQ_FINE_DOWN},
+    {"sim/radios/stby_com1_coarse_up_833", EventType::COM1_FREQ_COARSE_UP},
+    {"sim/radios/stby_com1_coarse_down_833", EventType::COM1_FREQ_COARSE_DOWN},
+    // Add more as needed
 };
 
-static const MsfsEventInfo msfsEventInfoMap[] = {
+// O(1) MSFS event name to event ID lookup
+static const std::unordered_map<std::string, unsigned int> msfsEventNameToId = {
     {"COM_STBY_RADIO_SET_HZ", 0x00011010},
-    // Add more as needed for other event names/IDs
+    // Add more as needed
 };
 

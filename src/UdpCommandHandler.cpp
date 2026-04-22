@@ -5,7 +5,7 @@
 // #############################################################################
 
 #include "UdpCommandHandler.hpp"
-#include "EventMap.hpp"
+#include "EventTypes.hpp"
 #include "Logger.hpp"
 #include <sstream>
 #include <iomanip>
@@ -35,27 +35,10 @@ void UdpCommandHandler::handle(const std::string& packet) {
         Logger::log("[UDP-TRACE] Stripped 'CMND' prefix, now: '" + cmd + "'");
     }
     Logger::log("[ESP32] Received event: '" + cmd + "'");
-    auto it = udpToMsfsEventMap.find(cmd);
-    if (it != udpToMsfsEventMap.end()) {
+    auto it = udpCommandToEventType.find(cmd);
+    if (it != udpCommandToEventType.end()) {
         Logger::log("[UDP-PARSE] Found event mapping, dispatching to controller");
-        const EventDescriptor& desc = it->second;
-        // Only handle COM1 frequency events here
-        if (desc.msfsEventName == "COM_STBY_RADIO_SET_HZ") {
-            if (desc.step == Config::COM1_FREQ_FINE_STEP) {
-                controller.queueEvent(EventType::COM1_FREQ_FINE_UP);
-            } else if (desc.step == -static_cast<int>(Config::COM1_FREQ_FINE_STEP)) {
-                controller.queueEvent(EventType::COM1_FREQ_FINE_DOWN);
-            } else if (desc.step == Config::COM1_FREQ_COARSE_STEP) {
-                controller.queueEvent(EventType::COM1_FREQ_COARSE_UP);
-            } else if (desc.step == -static_cast<int>(Config::COM1_FREQ_COARSE_STEP)) {
-                controller.queueEvent(EventType::COM1_FREQ_COARSE_DOWN);
-            } else {
-                Logger::log("[UDP-PARSE] Unknown COM_STBY_RADIO_SET_HZ step value: " + std::to_string(desc.step));
-            }
-        } else {
-            // For other events, delegate event construction to MSFSController
-            // controller.queueGenericEvent(desc.msfsEventName, desc.msfsEventId, static_cast<unsigned int>(desc.step), desc.msfsEventName);
-        }
+        controller.queueEvent(it->second);
     } else {
         Logger::log("[UDP-TRACE] Command did not match any known MSFS event mapping");
     }

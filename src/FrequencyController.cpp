@@ -1,4 +1,5 @@
 // ...existing code...
+// ...existing code...
 // #############################################################################
 // ##                                                                         ##
 // ## FrequencyController.cpp                  (c) Wolfram Plettscher 04/2026 ##
@@ -6,8 +7,30 @@
 // #############################################################################
 #include "FrequencyController.hpp"
 #include "EventTypes.hpp"
-#include "EventMap.hpp"
+#include "FlightSimBridge.hpp"
+
 #include "Logger.hpp"
+
+// #############################################################################
+void FrequencyController::setBridge(FlightSimBridge* bridgePtr) {
+    bridge = bridgePtr;
+}
+
+// #############################################################################
+void FrequencyController::refreshFreqFromCockpitIfNeeded() {
+    using namespace std::chrono;
+    auto now = steady_clock::now();
+    bool needRead = firstFreqEvent || (std::chrono::duration_cast<std::chrono::seconds>(now - lastFreqUpdate).count() > 30);
+    if (needRead && bridge && bridge->isConnected()) {
+        // SimConnect read logic placeholder:
+        // unsigned int cockpitFreq = bridge->readCom1Freq();
+        // For now, simulate with a log and keep com1_freq unchanged.
+        Logger::log("[FREQ] Reading COM1 frequency from cockpit (SimConnect)");
+        // com1_freq = cockpitFreq;
+        lastFreqUpdate = now;
+        firstFreqEvent = false;
+    }
+}
 #include <sstream>
 
 // #############################################################################
@@ -70,10 +93,19 @@ unsigned int FrequencyController::getCurrentFreq() const {
 
 // #############################################################################
 MsfEvent FrequencyController::createFrequencyEvent(EventType type) {
+    refreshFreqFromCockpitIfNeeded();
     MsfEvent evt;
     evt.type = type;
-    evt.eventId = 0x00011010;
-    evt.simEventName = "COM_STBY_RADIO_SET_HZ";
+    // Lookup event name from eventRegistry
+    for (const auto& entry : eventRegistry) {
+        if (entry.type == type) {
+            evt.simEventName = entry.msfsEventName;
+            break;
+        }
+    }
+    // O(1) lookup for eventId
+    auto idIt = msfsEventNameToId.find(evt.simEventName);
+    evt.eventId = (idIt != msfsEventNameToId.end()) ? idIt->second : 0;
     switch (type) {
         case EventType::COM1_FREQ_FINE_UP:
             evt.name = "COM1 Frequency (FINE_UP)";

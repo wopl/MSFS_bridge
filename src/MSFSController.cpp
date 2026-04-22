@@ -12,7 +12,6 @@
 #include "FrequencyController.hpp"
 
 // #############################################################################
-
 void MSFSController::queueEvent(EventType type) {
     MsfEvent evt;
     switch (type) {
@@ -23,13 +22,23 @@ void MSFSController::queueEvent(EventType type) {
             if (!frequencyController) return;
             evt = frequencyController->createFrequencyEvent(type);
             break;
-        case EventType::BRAKE_SET:
+        case EventType::BRAKE_SET: {
             evt.type = type;
             evt.name = "Parking Brake";
-            evt.eventId = EVENT_PARK_BRAKES;
             evt.data = 1;
-            evt.simEventName = "PARKING_BRAKES";
+            // Lookup event name for brakes
+            for (const auto& entry : eventRegistry) {
+                if (entry.type == type) {
+                    evt.simEventName = entry.msfsEventName;
+                    break;
+                }
+            }
+            // O(1) lookup for eventId
+            auto idIt = msfsEventNameToId.find(evt.simEventName);
+            evt.eventId = (idIt != msfsEventNameToId.end()) ? idIt->second : EVENT_PARK_BRAKES;
+            if (evt.simEventName.empty()) evt.simEventName = "PARKING_BRAKES";
             break;
+        }
         // Add more cases for other event types as needed
         default:
             Logger::log("[QUEUE] Unknown or unhandled EventType");
@@ -39,6 +48,7 @@ void MSFSController::queueEvent(EventType type) {
     queueEvent(evt);
 }
 
+// #############################################################################
 void MSFSController::queueEvent(const MsfEvent& evt) {
     std::lock_guard<std::mutex> lock(queueMutex);
     eventQueue.push(evt);
@@ -47,6 +57,7 @@ void MSFSController::queueEvent(const MsfEvent& evt) {
 // #############################################################################
 MSFSController::MSFSController() : bridge() {
     frequencyController = new FrequencyController();
+    frequencyController->setBridge(&bridge);
 }
 
 // #############################################################################

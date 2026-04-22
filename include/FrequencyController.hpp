@@ -1,3 +1,7 @@
+#ifndef FLIGHTSIMBRIDGE_FWD_DECL
+#define FLIGHTSIMBRIDGE_FWD_DECL
+class FlightSimBridge;
+#endif
 // #############################################################################
 // ##                                                                         ##
 // ## FrequencyController.hpp                  (c) Wolfram Plettscher 04/2026 ##
@@ -18,9 +22,13 @@ public:
     unsigned int increaseCoarse();
     unsigned int decreaseCoarse();
     unsigned int getCurrentFreq() const;
-    // Future: void syncWithCockpit(unsigned int cockpitFreq);
+    void setBridge(FlightSimBridge* bridgePtr);
 private:
+    void refreshFreqFromCockpitIfNeeded();
     unsigned int adjustFine(int direction);
     unsigned int adjustCoarse(int direction);
     unsigned int com1_freq;
+    std::chrono::steady_clock::time_point lastFreqUpdate;
+    FlightSimBridge* bridge = nullptr;
+    bool firstFreqEvent = true;
 };
