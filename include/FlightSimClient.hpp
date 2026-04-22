@@ -1,8 +1,13 @@
+// #############################################################################
+// ##                                                                         ##
+// ## FlightSimClient.hpp                      (c) Wolfram Plettscher 04/2026 ##
+// ##                                                                         ##
+// #############################################################################
 #pragma once
 #include <windows.h>
 #include <SimConnect.h>
 #include <string>
-#include <iostream>
+
 
 class FlightSimClient {
 public:

@@ -1,3 +1,8 @@
+// #############################################################################
+// ##                                                                         ##
+// ## MSFSController.hpp                       (c) Wolfram Plettscher 04/2026 ##
+// ##                                                                         ##
+// #############################################################################
 #pragma once
 #include "FlightSimBridge.hpp"
 #include <thread>
@@ -34,13 +39,16 @@ struct FreqChangeRequest {
 class MSFSController {
 public:
     MSFSController();
+    ~MSFSController();
     void run();
+    void stop();
     void dispatchEvent(const MsfEvent& evt);
     void queueFreqChange(FreqChangeType type);
-    unsigned int com1_freq;
+    // Add more general queue methods for other controls as needed
 private:
     FlightSimBridge bridge;
-    std::queue<FreqChangeRequest> freqQueue;
-    std::mutex queueMutex;
+    std::atomic<bool> running{false};
+    // Control modules
+    class FrequencyController* frequencyController;
 };
 

@@ -1,3 +1,8 @@
+// #############################################################################
+// ##                                                                         ##
+// ## UdpReceiver.cpp                          (c) Wolfram Plettscher 04/2026 ##
+// ##                                                                         ##
+// #############################################################################
 #include "UdpReceiver.hpp"
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -5,15 +10,18 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
+// #############################################################################
 UdpReceiver::UdpReceiver(int port, PacketHandler handler)
     : port(port), handler(handler), running(false) {
     std::cout << "[UDP-RECV] UdpReceiver constructed for port " << port << std::endl << std::flush;
 }
 
+// #############################################################################
 UdpReceiver::~UdpReceiver() {
     stop();
 }
 
+// #############################################################################
 void UdpReceiver::start() {
     std::cout << "[UDP-RECV] start() called" << std::endl << std::flush;
     if (running) return;
@@ -21,11 +29,13 @@ void UdpReceiver::start() {
     recvThread = std::thread(&UdpReceiver::receiveLoop, this);
 }
 
+// #############################################################################
 void UdpReceiver::stop() {
     running = false;
     if (recvThread.joinable()) recvThread.join();
 }
 
+// #############################################################################
 void UdpReceiver::receiveLoop() {
     std::cout << "[UDP-RECV] receiveLoop started" << std::endl << std::flush;
     WSADATA wsaData;
