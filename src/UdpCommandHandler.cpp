@@ -42,13 +42,13 @@ void UdpCommandHandler::handle(const std::string& packet) {
         // Only handle COM1 frequency events here
         if (desc.msfsEventName == "COM_STBY_RADIO_SET_HZ") {
             if (desc.step == Config::COM1_FREQ_FINE_STEP) {
-                controller.queueFreqChange(FreqChangeType::FINE_UP);
+                controller.queueEvent(EventType::COM1_FREQ_FINE_UP);
             } else if (desc.step == -static_cast<int>(Config::COM1_FREQ_FINE_STEP)) {
-                controller.queueFreqChange(FreqChangeType::FINE_DOWN);
+                controller.queueEvent(EventType::COM1_FREQ_FINE_DOWN);
             } else if (desc.step == Config::COM1_FREQ_COARSE_STEP) {
-                controller.queueFreqChange(FreqChangeType::COARSE_UP);
+                controller.queueEvent(EventType::COM1_FREQ_COARSE_UP);
             } else if (desc.step == -static_cast<int>(Config::COM1_FREQ_COARSE_STEP)) {
-                controller.queueFreqChange(FreqChangeType::COARSE_DOWN);
+                controller.queueEvent(EventType::COM1_FREQ_COARSE_DOWN);
             } else {
                 Logger::log("[UDP-PARSE] Unknown COM_STBY_RADIO_SET_HZ step value: " + std::to_string(desc.step));
             }

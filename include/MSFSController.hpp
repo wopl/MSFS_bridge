@@ -5,6 +5,7 @@
 // #############################################################################
 #pragma once
 #include "FlightSimBridge.hpp"
+#include "EventTypes.hpp"
 #include <thread>
 #include <chrono>
 #include <iostream>
@@ -12,13 +13,6 @@
 #include "msfs_events.hpp"
 #include <queue>
 #include <mutex>
-
-struct MsfEvent {
-    std::string name;
-    unsigned int eventId;
-    unsigned int data;
-    std::string simEventName;
-};
 
 enum class FreqChangeSource {
     UDP,
@@ -43,13 +37,15 @@ public:
     void run();
     void stop();
     void dispatchEvent(const MsfEvent& evt);
-    void queueFreqChange(FreqChangeType type);
+    void queueEvent(EventType type);
     void queueGenericEvent(const std::string& eventName, unsigned int eventId, unsigned int data, const std::string& simEventName);
-    // Add more general queue methods for other controls as needed
+    void queueEvent(const MsfEvent& evt);
 private:
     FlightSimBridge bridge;
     std::atomic<bool> running{false};
     // Control modules
     class FrequencyController* frequencyController;
+    std::queue<MsfEvent> eventQueue;
+    std::mutex queueMutex;
 };
 

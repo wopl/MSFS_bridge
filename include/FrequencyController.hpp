@@ -6,11 +6,12 @@
 #pragma once
 #include <queue>
 #include <mutex>
-#include "MSFSController.hpp"
+#include "EventTypes.hpp"
 #include "Config.hpp"
 
 class FrequencyController {
 public:
+    MsfEvent createFrequencyEvent(EventType type);
     FrequencyController();
     unsigned int increaseFine();
     unsigned int decreaseFine();

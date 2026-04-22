@@ -1,9 +1,11 @@
+// ...existing code...
 // #############################################################################
 // ##                                                                         ##
 // ## FrequencyController.cpp                  (c) Wolfram Plettscher 04/2026 ##
 // ##                                                                         ##
 // #############################################################################
 #include "FrequencyController.hpp"
+#include "EventTypes.hpp"
 #include "EventMap.hpp"
 #include "Logger.hpp"
 #include <sstream>
@@ -64,4 +66,34 @@ unsigned int FrequencyController::adjustCoarse(int direction) {
 // #############################################################################
 unsigned int FrequencyController::getCurrentFreq() const {
     return com1_freq;
+}
+
+// #############################################################################
+MsfEvent FrequencyController::createFrequencyEvent(EventType type) {
+    MsfEvent evt;
+    evt.type = type;
+    evt.eventId = 0x00011010;
+    evt.simEventName = "COM_STBY_RADIO_SET_HZ";
+    switch (type) {
+        case EventType::COM1_FREQ_FINE_UP:
+            evt.name = "COM1 Frequency (FINE_UP)";
+            evt.data = increaseFine();
+            break;
+        case EventType::COM1_FREQ_FINE_DOWN:
+            evt.name = "COM1 Frequency (FINE_DOWN)";
+            evt.data = decreaseFine();
+            break;
+        case EventType::COM1_FREQ_COARSE_UP:
+            evt.name = "COM1 Frequency (COARSE_UP)";
+            evt.data = increaseCoarse();
+            break;
+        case EventType::COM1_FREQ_COARSE_DOWN:
+            evt.name = "COM1 Frequency (COARSE_DOWN)";
+            evt.data = decreaseCoarse();
+            break;
+        default:
+            Logger::log("[FREQ] Unknown frequency EventType");
+            break;
+    }
+    return evt;
 }

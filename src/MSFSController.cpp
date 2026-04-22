@@ -4,6 +4,7 @@
 // ##                                                                         ##
 // #############################################################################
 #include "MSFSController.hpp"
+#include "EventTypes.hpp"
 #include "Logger.hpp"
 #include "Config.hpp"
 #include <utility>
@@ -11,31 +12,36 @@
 #include "FrequencyController.hpp"
 
 // #############################################################################
-void MSFSController::queueFreqChange(FreqChangeType type) {
-    if (!frequencyController) return;
-    unsigned int newFreq = 0;
-    std::string typeStr;
+
+void MSFSController::queueEvent(EventType type) {
+    MsfEvent evt;
     switch (type) {
-        case FreqChangeType::FINE_UP:
-            newFreq = frequencyController->increaseFine();
-            typeStr = "FINE_UP";
+        case EventType::COM1_FREQ_FINE_UP:
+        case EventType::COM1_FREQ_FINE_DOWN:
+        case EventType::COM1_FREQ_COARSE_UP:
+        case EventType::COM1_FREQ_COARSE_DOWN:
+            if (!frequencyController) return;
+            evt = frequencyController->createFrequencyEvent(type);
             break;
-        case FreqChangeType::FINE_DOWN:
-            newFreq = frequencyController->decreaseFine();
-            typeStr = "FINE_DOWN";
+        case EventType::BRAKE_SET:
+            evt.type = type;
+            evt.name = "Parking Brake";
+            evt.eventId = EVENT_PARK_BRAKES;
+            evt.data = 1;
+            evt.simEventName = "PARKING_BRAKES";
             break;
-        case FreqChangeType::COARSE_UP:
-            newFreq = frequencyController->increaseCoarse();
-            typeStr = "COARSE_UP";
-            break;
-        case FreqChangeType::COARSE_DOWN:
-            newFreq = frequencyController->decreaseCoarse();
-            typeStr = "COARSE_DOWN";
-            break;
+        // Add more cases for other event types as needed
+        default:
+            Logger::log("[QUEUE] Unknown or unhandled EventType");
+            return;
     }
-    MsfEvent freqEvt{"COM1 Frequency (" + typeStr + ")", 0x00011010, newFreq, "COM_STBY_RADIO_SET_HZ"};
-    Logger::log("[FREQ] Dispatching event: " + freqEvt.simEventName + ", data=" + std::to_string(freqEvt.data));
-    dispatchEvent(freqEvt);
+    Logger::log("[QUEUE] Queuing event: " + evt.simEventName + ", data=" + std::to_string(evt.data));
+    queueEvent(evt);
+}
+
+void MSFSController::queueEvent(const MsfEvent& evt) {
+    std::lock_guard<std::mutex> lock(queueMutex);
+    eventQueue.push(evt);
 }
 
 // #############################################################################
@@ -64,9 +70,16 @@ void MSFSController::run() {
     if (!bridge.connect()) return;
     running = true;
     // Example: Set parking brake once at startup
-    MsfEvent brakeEvt{"Parking Brake", EVENT_PARK_BRAKES, 1, "PARKING_BRAKES"};
-    dispatchEvent(brakeEvt);
+    queueEvent(EventType::BRAKE_SET);
     while (running) {
+        {
+            std::lock_guard<std::mutex> lock(queueMutex);
+            while (!eventQueue.empty()) {
+                MsfEvent evt = eventQueue.front();
+                eventQueue.pop();
+                dispatchEvent(evt);
+            }
+        }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
