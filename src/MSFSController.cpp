@@ -15,7 +15,20 @@
 // #############################################################################
 void MSFSController::queueFreqChange(FreqChangeType type) {
     if (frequencyController) {
-        frequencyController->queueChange(type);
+        switch (type) {
+            case FreqChangeType::FINE_UP:
+                frequencyController->increaseFine();
+                break;
+            case FreqChangeType::FINE_DOWN:
+                frequencyController->decreaseFine();
+                break;
+            case FreqChangeType::COARSE_UP:
+                frequencyController->increaseCoarse();
+                break;
+            case FreqChangeType::COARSE_DOWN:
+                frequencyController->decreaseCoarse();
+                break;
+        }
     }
 }
 

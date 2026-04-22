@@ -37,10 +37,26 @@ void UdpCommandHandler::handle(const std::string& packet) {
     Logger::log("[ESP32] Received event: '" + cmd + "'");
     auto it = udpToMsfsEventMap.find(cmd);
     if (it != udpToMsfsEventMap.end()) {
-        Logger::log("[UDP-PARSE] Found event mapping, dispatching to MSFSController");
+        Logger::log("[UDP-PARSE] Found event mapping, dispatching to FrequencyController");
         const EventDescriptor& desc = it->second;
-        MsfEvent evt{desc.msfsEventName, desc.msfsEventId, static_cast<unsigned int>(desc.step), desc.msfsEventName};
-        controller.dispatchEvent(evt);
+        // Only handle COM1 frequency events here
+        if (desc.msfsEventName == "COM_STBY_RADIO_SET_HZ") {
+            if (desc.step == Config::COM1_FREQ_FINE_STEP) {
+                controller.queueFreqChange(FreqChangeType::FINE_UP);
+            } else if (desc.step == -static_cast<int>(Config::COM1_FREQ_FINE_STEP)) {
+                controller.queueFreqChange(FreqChangeType::FINE_DOWN);
+            } else if (desc.step == Config::COM1_FREQ_COARSE_STEP) {
+                controller.queueFreqChange(FreqChangeType::COARSE_UP);
+            } else if (desc.step == -static_cast<int>(Config::COM1_FREQ_COARSE_STEP)) {
+                controller.queueFreqChange(FreqChangeType::COARSE_DOWN);
+            } else {
+                Logger::log("[UDP-PARSE] Unknown COM_STBY_RADIO_SET_HZ step value: " + std::to_string(desc.step));
+            }
+        } else {
+            // For other events, fallback to direct dispatch (if needed)
+            MsfEvent evt{desc.msfsEventName, desc.msfsEventId, static_cast<unsigned int>(desc.step), desc.msfsEventName};
+            controller.dispatchEvent(evt);
+        }
     } else {
         Logger::log("[UDP-TRACE] Command did not match any known MSFS event mapping");
     }
