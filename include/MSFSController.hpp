@@ -44,6 +44,7 @@ public:
     void stop();
     void dispatchEvent(const MsfEvent& evt);
     void queueFreqChange(FreqChangeType type);
+    void queueGenericEvent(const std::string& eventName, unsigned int eventId, unsigned int data, const std::string& simEventName);
     // Add more general queue methods for other controls as needed
 private:
     FlightSimBridge bridge;

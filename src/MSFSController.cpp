@@ -8,28 +8,34 @@
 #include "Config.hpp"
 #include <utility>
 #include <sstream>
-
-
 #include "FrequencyController.hpp"
 
 // #############################################################################
 void MSFSController::queueFreqChange(FreqChangeType type) {
-    if (frequencyController) {
-        switch (type) {
-            case FreqChangeType::FINE_UP:
-                frequencyController->increaseFine();
-                break;
-            case FreqChangeType::FINE_DOWN:
-                frequencyController->decreaseFine();
-                break;
-            case FreqChangeType::COARSE_UP:
-                frequencyController->increaseCoarse();
-                break;
-            case FreqChangeType::COARSE_DOWN:
-                frequencyController->decreaseCoarse();
-                break;
-        }
+    if (!frequencyController) return;
+    unsigned int newFreq = 0;
+    std::string typeStr;
+    switch (type) {
+        case FreqChangeType::FINE_UP:
+            newFreq = frequencyController->increaseFine();
+            typeStr = "FINE_UP";
+            break;
+        case FreqChangeType::FINE_DOWN:
+            newFreq = frequencyController->decreaseFine();
+            typeStr = "FINE_DOWN";
+            break;
+        case FreqChangeType::COARSE_UP:
+            newFreq = frequencyController->increaseCoarse();
+            typeStr = "COARSE_UP";
+            break;
+        case FreqChangeType::COARSE_DOWN:
+            newFreq = frequencyController->decreaseCoarse();
+            typeStr = "COARSE_DOWN";
+            break;
     }
+    MsfEvent freqEvt{"COM1 Frequency (" + typeStr + ")", 0x00011010, newFreq, "COM_STBY_RADIO_SET_HZ"};
+    Logger::log("[FREQ] Dispatching event: " + freqEvt.simEventName + ", data=" + std::to_string(freqEvt.data));
+    dispatchEvent(freqEvt);
 }
 
 // #############################################################################
@@ -61,9 +67,6 @@ void MSFSController::run() {
     MsfEvent brakeEvt{"Parking Brake", EVENT_PARK_BRAKES, 1, "PARKING_BRAKES"};
     dispatchEvent(brakeEvt);
     while (running) {
-        if (frequencyController) {
-            frequencyController->processQueue(*this);
-        }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
@@ -77,5 +80,6 @@ MSFSController::~MSFSController() {
 void MSFSController::stop() {
     running = false;
 }
+
 
 
