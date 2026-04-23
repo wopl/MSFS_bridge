@@ -22,11 +22,13 @@ void FrequencyController::refreshFreqFromCockpitIfNeeded() {
     auto now = steady_clock::now();
     bool needRead = firstFreqEvent || (std::chrono::duration_cast<std::chrono::seconds>(now - lastFreqUpdate).count() > 30);
     if (needRead && bridge && bridge->isConnected()) {
-        // SimConnect read logic placeholder:
-        // unsigned int cockpitFreq = bridge->readCom1Freq();
-        // For now, simulate with a log and keep com1_freq unchanged.
-        Logger::log("[FREQ] Reading COM1 frequency from cockpit (SimConnect)");
-        // com1_freq = cockpitFreq;
+        unsigned int cockpitFreq = bridge->readCom1Freq();
+        if (cockpitFreq != 0) {
+            Logger::log("[FREQ] Read COM1 frequency from cockpit: " + std::to_string(cockpitFreq));
+            com1_freq = cockpitFreq;
+        } else {
+            Logger::log("[FREQ] Failed to read COM1 frequency from cockpit", Logger::Level::Warning);
+        }
         lastFreqUpdate = now;
         firstFreqEvent = false;
     }

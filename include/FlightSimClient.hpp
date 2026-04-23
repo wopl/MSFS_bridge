@@ -18,6 +18,8 @@ public:
     bool isConnected() const;
     bool mapEvent(DWORD eventId, const char* simEventName);
     bool sendEvent(DWORD eventId, DWORD data);
+    // Synchronously read COM1 frequency (Hz*1e2)
+    unsigned int readCom1Freq();
 
 private:
     HANDLE hFlightSim;

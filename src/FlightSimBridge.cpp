@@ -42,3 +42,8 @@ void FlightSimBridge::disconnect() {
 bool FlightSimBridge::isConnected() const {
     return flightSimClient.isConnected();
 }
+
+// #############################################################################
+unsigned int FlightSimBridge::readCom1Freq() {
+    return flightSimClient.readCom1Freq();
+}
