@@ -6,6 +6,7 @@
 #pragma once
 #include <string>
 #include <unordered_map>
+#include <chrono>
 
 // Enum for all event types
 enum class EventType {
@@ -13,6 +14,7 @@ enum class EventType {
     COM1_FREQ_FINE_DOWN,
     COM1_FREQ_COARSE_UP,
     COM1_FREQ_COARSE_DOWN,
+    REQUEST_COM1_FREQ, // New event type for frequency request
     AUTOPILOT_ON,
     AUTOPILOT_OFF,
     BRAKE_SET,
@@ -20,13 +22,24 @@ enum class EventType {
     // Add more as needed
 };
 
+// Async event state for queue management
+enum class MsfsEventState {
+    Ready,
+    PendingInstrumentUpdate,
+    FailedTimeout
+};
+
 // Struct for a generic MSFS event
-struct MsfEvent {
+struct MsfsEvent {
     EventType type;
     std::string name;
     unsigned int eventId;
     unsigned int data;
     std::string simEventName;
+    MsfsEventState state = MsfsEventState::Ready;
+    // For pending events, track instrument type and request time
+    std::string instrumentKey; // e.g., "COM1", "NAV1"
+    std::chrono::steady_clock::time_point requestTime;
 };
 
 // Normalized event registry entry with direct MSFS event name mapping
@@ -40,6 +53,7 @@ static const EventRegistryEntry eventRegistry[] = {
     {EventType::COM1_FREQ_FINE_DOWN, "COM_STBY_RADIO_SET_HZ"},
     {EventType::COM1_FREQ_COARSE_UP, "COM_STBY_RADIO_SET_HZ"},
     {EventType::COM1_FREQ_COARSE_DOWN, "COM_STBY_RADIO_SET_HZ"},
+    {EventType::REQUEST_COM1_FREQ,   "COM1_FREQ_REQUEST"}, // New registry entry
     // Add more as needed
 };
 
@@ -55,6 +69,7 @@ static const std::unordered_map<std::string, EventType> udpCommandToEventType = 
 // O(1) MSFS event name to event ID lookup
 static const std::unordered_map<std::string, unsigned int> msfsEventNameToId = {
     {"COM_STBY_RADIO_SET_HZ", 0x00011010},
+    {"COM1_FREQ_REQUEST", 0x00012000}, // Assign a unique ID for the request event
     // Add more as needed
 };
 

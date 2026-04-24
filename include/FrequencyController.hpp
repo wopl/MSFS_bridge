@@ -15,7 +15,10 @@ class FlightSimBridge;
 
 class FrequencyController {
 public:
-    MsfEvent createFrequencyEvent(EventType type);
+    MsfsEvent createFrequencyEvent(EventType type);
+    MsfsEvent requestCom1Frequency(); // New: structured frequency request
+    bool shouldRequestUpdate() const; // Async: check if update needed
+    unsigned int fetchCom1FreqNonBlocking(); // Async: fetch and update frequency (call from thread)
     FrequencyController();
     unsigned int increaseFine();
     unsigned int decreaseFine();
@@ -31,4 +34,5 @@ private:
     std::chrono::steady_clock::time_point lastFreqUpdate;
     FlightSimBridge* bridge = nullptr;
     bool firstFreqEvent = true;
+    mutable std::recursive_mutex freqMutex; // Protects com1_freq and related state, now recursive to avoid deadlock
 };

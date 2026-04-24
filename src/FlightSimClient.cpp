@@ -60,9 +60,12 @@ unsigned int FlightSimClient::readCom1Freq() {
         Logger::log("[SimConnect] Timeout waiting for COM1 freq", Logger::Level::Warning);
         return 0;
     }
-    // Convert MHz to Hz*1e2 (e.g. 118.000 MHz -> 118000000)
-    unsigned int freq = static_cast<unsigned int>(freqData.com1_freq * 1e6);
-    Logger::log("[SimConnect] Read COM1 freq (MHz): " + std::to_string(freqData.com1_freq) + ", Hz*1e2: " + std::to_string(freq));
+    // Convert MHz to Hz (e.g. 118.000 MHz -> 118000000), rounding to nearest 1 kHz
+    unsigned int freq = static_cast<unsigned int>(freqData.com1_freq * 1000.0 + 0.5) * 1000;
+    std::ostringstream oss;
+    oss.precision(3);
+    oss << std::fixed << "[SimConnect] Read COM1 freq: " << (freqData.com1_freq) << " MHz (" << freq << " Hz)";
+    Logger::log(oss.str());
     return freq;
 }
 

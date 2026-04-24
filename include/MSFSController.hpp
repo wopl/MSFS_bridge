@@ -36,16 +36,20 @@ public:
     ~MSFSController();
     void run();
     void stop();
-    void dispatchEvent(const MsfEvent& evt);
+    void dispatchEvent(const MsfsEvent& evt);
     void queueEvent(EventType type);
     void queueGenericEvent(const std::string& eventName, unsigned int eventId, unsigned int data, const std::string& simEventName);
-    void queueEvent(const MsfEvent& evt);
+    void queueEvent(const MsfsEvent& evt);
+    // Async event management
+    void markInstrumentUpdateComplete(const std::string& instrumentKey, bool success);
+    void checkPendingEventTimeouts();
 private:
     FlightSimBridge bridge;
     std::atomic<bool> running{false};
     // Control modules
     class FrequencyController* frequencyController;
-    std::queue<MsfEvent> eventQueue;
+    std::queue<MsfsEvent> eventQueue;
+    std::vector<MsfsEvent> pendingEvents; // Events waiting for instrument update
     std::mutex queueMutex;
 };
 
