@@ -34,11 +34,11 @@ void FrequencyController::refreshFreqFromCockpitIfNeeded() {
     if (needRead && bridge && bridge->isConnected()) {
         unsigned int cockpitFreq = bridge->readCom1Freq();
         if (cockpitFreq != 0) {
+            setFreqFromHz(cockpitFreq);
             std::ostringstream oss;
             oss << std::fixed << std::setprecision(3);
             oss << "[FREQ] Read COM1 frequency from cockpit: " << (static_cast<double>(cockpitFreq) / 1e6) << " MHz (" << cockpitFreq << " Hz)";
             Logger::log(oss.str());
-            com1_freq = cockpitFreq;
         } else {
             Logger::log("[FREQ] Failed to read COM1 frequency from cockpit", Logger::Level::Warning);
         }
@@ -59,8 +59,9 @@ MsfsEvent FrequencyController::requestCom1Frequency() {
     evt.eventId = (idIt != msfsEventNameToId.end()) ? idIt->second : 0;
     evt.data = 0;
     if (bridge && bridge->isConnected()) {
-        evt.data = bridge->readCom1Freq();
-        com1_freq = evt.data;
+        unsigned int freq = bridge->readCom1Freq();
+        setFreqFromHz(freq);
+        evt.data = getCurrentFreqHz();
         std::ostringstream oss;
         oss << std::fixed << std::setprecision(3);
         oss << "[FREQ] Requested COM1 frequency from cockpit: " << (static_cast<double>(evt.data) / 1e6) << " MHz (" << evt.data << " Hz)";
@@ -74,11 +75,11 @@ MsfsEvent FrequencyController::requestCom1Frequency() {
 
 // #############################################################################
 FrequencyController::FrequencyController()
-    : com1_freq(Config::COM1_FREQ_MIN) {
+    : coarse_mhz(124), fine_band(0) {
     std::lock_guard<std::recursive_mutex> lock(freqMutex);
     std::ostringstream oss;
     oss << std::fixed << std::setprecision(3);
-    oss << "[FREQ] Initialized com1_freq to " << (static_cast<double>(com1_freq) / 1e6) << " MHz (" << com1_freq << " Hz)";
+    oss << "[FREQ] Initialized coarse_mhz to " << coarse_mhz << ", fine_band to " << fine_band << " (" << getCurrentFreqHz() << " Hz)";
     Logger::log(oss.str());
 }
 
@@ -87,17 +88,14 @@ unsigned int FrequencyController::increaseFine() {
     std::lock_guard<std::recursive_mutex> lock(freqMutex);
     return adjustFine(1);
 }
-// #############################################################################
 unsigned int FrequencyController::decreaseFine() {
     std::lock_guard<std::recursive_mutex> lock(freqMutex);
     return adjustFine(-1);
 }
-// #############################################################################
 unsigned int FrequencyController::increaseCoarse() {
     std::lock_guard<std::recursive_mutex> lock(freqMutex);
     return adjustCoarse(1);
 }
-// #############################################################################
 unsigned int FrequencyController::decreaseCoarse() {
     std::lock_guard<std::recursive_mutex> lock(freqMutex);
     return adjustCoarse(-1);
@@ -105,52 +103,59 @@ unsigned int FrequencyController::decreaseCoarse() {
 
 // #############################################################################
 unsigned int FrequencyController::adjustFine(int direction) {
-    int next_freq = static_cast<int>(com1_freq) + direction * static_cast<int>(Config::COM1_FREQ_FINE_STEP);
-    if (next_freq > static_cast<int>(Config::COM1_FREQ_MAX)) {
-        Logger::log("[FREQ] Fine step exceeded max, wrapping to min");
-        next_freq = static_cast<int>(Config::COM1_FREQ_MIN);
-    } else if (next_freq < static_cast<int>(Config::COM1_FREQ_MIN)) {
-        Logger::log("[FREQ] Fine step below min, wrapping to max");
-        next_freq = static_cast<int>(Config::COM1_FREQ_MAX);
-    }
-    {
-        std::ostringstream oss;
-        oss << std::fixed << std::setprecision(3);
-        oss << "[FREQ] FINE " << (direction > 0 ? "UP" : "DOWN") << ": "
-            << (static_cast<double>(com1_freq) / 1e6) << " MHz (" << com1_freq << " Hz) -> "
-            << (static_cast<double>(next_freq) / 1e6) << " MHz (" << next_freq << " Hz)";
-        Logger::log(oss.str());
-    }
-    com1_freq = static_cast<unsigned int>(next_freq);
-    return com1_freq;
+    // Fine band: 0..39 (0=000, 1=025, ..., 39=975)
+    int old_fine = static_cast<int>(fine_band);
+    int bands = static_cast<int>(Config::COM1_FREQ_FINE_BANDS);
+    int new_fine = (old_fine + direction + bands) % bands;
+    unsigned int old_hz = getCurrentFreqHz();
+    fine_band = static_cast<unsigned int>(new_fine);
+    unsigned int new_hz = getCurrentFreqHz();
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(3);
+    oss << "[FREQ] FINE " << (direction > 0 ? "UP" : "DOWN") << ": "
+        << (static_cast<double>(old_hz) / 1e6) << " MHz (" << old_hz << " Hz) -> "
+        << (static_cast<double>(new_hz) / 1e6) << " MHz (" << new_hz << " Hz)";
+    Logger::log(oss.str());
+    return new_hz;
 }
 
 // #############################################################################
 unsigned int FrequencyController::adjustCoarse(int direction) {
-    int next_freq = static_cast<int>(com1_freq) + direction * static_cast<int>(Config::COM1_FREQ_COARSE_STEP);
-    if (next_freq > static_cast<int>(Config::COM1_FREQ_MAX)) {
-        Logger::log("[FREQ] Coarse step exceeded max, wrapping to min");
-        next_freq = static_cast<int>(Config::COM1_FREQ_MIN);
-    } else if (next_freq < static_cast<int>(Config::COM1_FREQ_MIN)) {
-        Logger::log("[FREQ] Coarse step below min, wrapping to max");
-        next_freq = static_cast<int>(Config::COM1_FREQ_MAX);
-    }
-    {
-        std::ostringstream oss;
-        oss << std::fixed << std::setprecision(3);
-        oss << "[FREQ] COARSE " << (direction > 0 ? "UP" : "DOWN") << ": "
-            << (static_cast<double>(com1_freq) / 1e6) << " MHz (" << com1_freq << " Hz) -> "
-            << (static_cast<double>(next_freq) / 1e6) << " MHz (" << next_freq << " Hz)";
-        Logger::log(oss.str());
-    }
-    com1_freq = static_cast<unsigned int>(next_freq);
-    return com1_freq;
+    int old_coarse = static_cast<int>(coarse_mhz);
+    int new_coarse = old_coarse + direction;
+    // Clamp to valid MHz range
+    if (new_coarse < 118) new_coarse = 136;
+    if (new_coarse > 136) new_coarse = 118;
+    unsigned int old_hz = getCurrentFreqHz();
+    coarse_mhz = static_cast<unsigned int>(new_coarse);
+    unsigned int new_hz = getCurrentFreqHz();
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(3);
+    oss << "[FREQ] COARSE " << (direction > 0 ? "UP" : "DOWN") << ": "
+        << (static_cast<double>(old_hz) / 1e6) << " MHz (" << old_hz << " Hz) -> "
+        << (static_cast<double>(new_hz) / 1e6) << " MHz (" << new_hz << " Hz)";
+    Logger::log(oss.str());
+    return new_hz;
 }
 
 // #############################################################################
-unsigned int FrequencyController::getCurrentFreq() const {
+unsigned int FrequencyController::getCurrentFreqHz() const {
     std::lock_guard<std::recursive_mutex> lock(freqMutex);
-    return com1_freq;
+    return coarse_mhz * 1000000 + fine_band * Config::COM1_FREQ_FINE_BAND_STEP;
+}
+unsigned int FrequencyController::getCoarseMHz() const {
+    std::lock_guard<std::recursive_mutex> lock(freqMutex);
+    return coarse_mhz;
+}
+unsigned int FrequencyController::getFineBand() const {
+    std::lock_guard<std::recursive_mutex> lock(freqMutex);
+    return fine_band;
+}
+void FrequencyController::setFreqFromHz(unsigned int freq_hz) {
+    std::lock_guard<std::recursive_mutex> lock(freqMutex);
+    coarse_mhz = freq_hz / 1000000;
+    unsigned int rem = freq_hz % 1000000;
+    fine_band = rem / Config::COM1_FREQ_FINE_BAND_STEP;
 }
 
 // #############################################################################
@@ -197,7 +202,7 @@ unsigned int FrequencyController::fetchCom1FreqNonBlocking() {
     if (bridge && bridge->isConnected()) {
         freq = bridge->readCom1Freq();
         if (freq != 0) {
-            com1_freq = freq;
+            setFreqFromHz(freq);
             std::ostringstream oss;
             oss << std::fixed << std::setprecision(3);
             oss << "[ASYNC] Non-blocking fetch: COM1 frequency updated to " << (static_cast<double>(freq) / 1e6) << " MHz (" << freq << " Hz)";
@@ -208,5 +213,5 @@ unsigned int FrequencyController::fetchCom1FreqNonBlocking() {
             Logger::log("[ASYNC] Non-blocking fetch failed to read COM1 frequency", Logger::Level::Warning);
         }
     }
-    return freq;
+    return getCurrentFreqHz();
 }
