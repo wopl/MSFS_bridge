@@ -196,3 +196,23 @@ unsigned int FrequencyController::getCurrentFreqHz() const {
     std::lock_guard<std::recursive_mutex> lock(freqMutex);
     return static_cast<unsigned int>((freq_coarse * 1000000) + (freq_fine * 1000));
 }
+
+// #############################################################################
+MsfsEvent FrequencyController::createCom1FlipEvent() {
+    std::lock_guard<std::recursive_mutex> lock(freqMutex);
+    MsfsEvent evt;
+    evt.type = EventType::COM1_STBY_FLIP;
+    evt.name = "COM1 Standby Flip";
+    // Lookup event name from eventRegistry
+    for (const auto& entry : eventRegistry) {
+        if (entry.type == EventType::COM1_STBY_FLIP) {
+            evt.simEventName = entry.msfsEventName;
+            break;
+        }
+    }
+    auto idIt = msfsEventNameToId.find(evt.simEventName);
+    evt.eventId = (idIt != msfsEventNameToId.end()) ? idIt->second : 0;
+    evt.data = 0;
+    Logger::log("[FREQ] Created COM1 Standby Flip event");
+    return evt;
+}

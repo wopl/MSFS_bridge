@@ -12,6 +12,10 @@
 
 class FrequencyController {
 public:
+        /**
+         * Create an event for COM1 standby flip (active/standby swap).
+         */
+        MsfsEvent createCom1FlipEvent();
     /**
      * Create a frequency event for the given type (fine/coarse up/down).
      */

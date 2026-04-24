@@ -29,6 +29,10 @@ void MSFSController::queueEvent(EventType type) {
             }
             evt = frequencyController->createFrequencyEvent(type);
             break;
+        case EventType::COM1_STBY_FLIP:
+            if (!frequencyController) return;
+            evt = frequencyController->createCom1FlipEvent();
+            break;
         case EventType::REQUEST_COM1_FREQ:
             if (!frequencyController) return;
             evt = frequencyController->requestCom1Frequency();
