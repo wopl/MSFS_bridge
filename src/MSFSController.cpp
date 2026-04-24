@@ -88,6 +88,7 @@ void MSFSController::queueEvent(const MsfsEvent& evt) {
     eventQueue.push(evt);
 }
 
+// #############################################################################
 // Called when an instrument update completes (success or timeout)
 void MSFSController::markInstrumentUpdateComplete(const std::string& instrumentKey, bool success) {
     std::lock_guard<std::mutex> lock(queueMutex);
@@ -95,6 +96,35 @@ void MSFSController::markInstrumentUpdateComplete(const std::string& instrumentK
         if (evt.instrumentKey == instrumentKey && evt.state == MsfsEventState::PendingInstrumentUpdate) {
             evt.state = success ? MsfsEventState::Ready : MsfsEventState::FailedTimeout;
             if (success) {
+                // After cockpit fetch, apply the original frequency event to the updated state
+                if (frequencyController) {
+                    // Only apply if this is a frequency event
+                    switch (evt.type) {
+                        case EventType::COM1_FREQ_FINE_UP:
+                            frequencyController->increaseFine();
+                            evt.name = "COM1 Frequency (FINE_UP)";
+                            break;
+                        case EventType::COM1_FREQ_FINE_DOWN:
+                            frequencyController->decreaseFine();
+                            evt.name = "COM1 Frequency (FINE_DOWN)";
+                            break;
+                        case EventType::COM1_FREQ_COARSE_UP:
+                            frequencyController->increaseCoarse();
+                            evt.name = "COM1 Frequency (COARSE_UP)";
+                            break;
+                        case EventType::COM1_FREQ_COARSE_DOWN:
+                            frequencyController->decreaseCoarse();
+                            evt.name = "COM1 Frequency (COARSE_DOWN)";
+                            break;
+                        default:
+                            break;
+                    }
+                    evt.data = frequencyController->getCurrentFreqHz();
+                    std::ostringstream oss;
+                    oss << "[ASYNC-DEBUG] Applied pending event after cockpit fetch: type=" << static_cast<int>(evt.type)
+                        << ", data=" << evt.data;
+                    Logger::log(oss.str());
+                }
                 eventQueue.push(evt);
                 Logger::log("[ASYNC] Marked event ready and queued for " + instrumentKey);
             } else {
@@ -107,6 +137,7 @@ void MSFSController::markInstrumentUpdateComplete(const std::string& instrumentK
         [](const MsfsEvent& e) { return e.state != MsfsEventState::PendingInstrumentUpdate; }), pendingEvents.end());
 }
 
+// #############################################################################
 // Check for pending events that have timed out
 void MSFSController::checkPendingEventTimeouts() {
     std::lock_guard<std::mutex> lock(queueMutex);

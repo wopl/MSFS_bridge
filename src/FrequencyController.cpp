@@ -12,6 +12,7 @@
 #include <sstream>
 #include <iomanip>
 
+// #############################################################################
 // Helper: extract freq_coarse and freq_fine from Hz
 void FrequencyController::setFreqFromHz(unsigned int freq_hz) {
     freq_coarse = static_cast<int>(freq_hz / 1000000);
@@ -40,13 +41,17 @@ void FrequencyController::refreshFreqFromCockpitIfNeeded() {
     auto now = steady_clock::now();
     bool needRead = firstFreqEvent || (duration_cast<seconds>(now - lastFreqUpdate).count() > 30);
     if (needRead && bridge && bridge->isConnected()) {
+        int before_coarse = freq_coarse;
+        int before_fine = freq_fine;
         unsigned int cockpitFreq = bridge->readCom1Freq();
         if (cockpitFreq != 0) {
             setFreqFromHz(cockpitFreq);
             std::ostringstream oss;
             oss << std::fixed << std::setprecision(3);
-            oss << "[FREQ] Read COM1 frequency from cockpit: " << (static_cast<double>(cockpitFreq) / 1e6) << " MHz (" << cockpitFreq << " Hz)";
-            oss << ", freq_coarse: " << freq_coarse << ", freq_fine: " << freq_fine;
+            oss << "[FREQ-COCKPIT] Overwriting local state from cockpit: "
+                << "Before: coarse=" << before_coarse << ", fine=" << before_fine
+                << ", Cockpit: " << (static_cast<double>(cockpitFreq) / 1e6) << " MHz (" << cockpitFreq << " Hz)"
+                << ", After: coarse=" << freq_coarse << ", fine=" << freq_fine;
             Logger::log(oss.str());
         } else {
             Logger::log("[FREQ] Failed to read COM1 frequency from cockpit", Logger::Level::Warning);
@@ -55,7 +60,6 @@ void FrequencyController::refreshFreqFromCockpitIfNeeded() {
         firstFreqEvent = false;
     }
 }
-#include <sstream>
 
 // #############################################################################
 MsfsEvent FrequencyController::requestCom1Frequency() {
@@ -89,21 +93,25 @@ FrequencyController::FrequencyController()
         // Initialization log removed
 }
 // --- Frequency step helpers ---
+// #############################################################################
 void FrequencyController::increaseCoarse() {
     freq_coarse++;
     if (freq_coarse > 136) freq_coarse = 118;
 }
 
+// #############################################################################
 void FrequencyController::decreaseCoarse() {
     freq_coarse--;
     if (freq_coarse < 118) freq_coarse = 136;
 }
 
+// #############################################################################
 void FrequencyController::increaseFine() {
     freq_fine += 5;
     if (freq_fine > 999) freq_fine = 0;
 }
 
+// #############################################################################
 void FrequencyController::decreaseFine() {
     freq_fine -= 5;
     if (freq_fine < 0) freq_fine = 995;
@@ -116,9 +124,7 @@ void FrequencyController::decreaseFine() {
 MsfsEvent FrequencyController::createFrequencyEvent(EventType type) {
     std::lock_guard<std::recursive_mutex> lock(freqMutex);
 
-    refreshFreqFromCockpitIfNeeded();
-
-    // Apply the adjustment to the internal state
+    // Only operate on local state; cockpit refresh is handled by MSFSController if needed
     MsfsEvent evt;
     evt.type = type;
     // Lookup event name from eventRegistry
@@ -128,6 +134,8 @@ MsfsEvent FrequencyController::createFrequencyEvent(EventType type) {
             break;
         }
     }
+    int before_coarse = freq_coarse;
+    int before_fine = freq_fine;
     switch (type) {
         case EventType::COM1_FREQ_FINE_UP:
             evt.name = "COM1 Frequency (FINE_UP)";
@@ -149,8 +157,15 @@ MsfsEvent FrequencyController::createFrequencyEvent(EventType type) {
             Logger::log("[FREQ] Unknown frequency EventType");
             break;
     }
-    // Prepare data for transmission (Hz)
+    int after_coarse = freq_coarse;
+    int after_fine = freq_fine;
     evt.data = static_cast<unsigned int>((freq_coarse * 1000000) + (freq_fine * 1000));
+    std::ostringstream oss;
+    oss << "[FREQ-DEBUG] Event: " << evt.name
+        << ", Before: coarse=" << before_coarse << ", fine=" << before_fine
+        << ", After: coarse=" << after_coarse << ", fine=" << after_fine
+        << ", Data: " << evt.data;
+    Logger::log(oss.str());
     return evt;
 }
 
@@ -172,5 +187,12 @@ unsigned int FrequencyController::fetchCom1FreqNonBlocking() {
             Logger::log("[ASYNC] Non-blocking fetch failed to read COM1 frequency", Logger::Level::Warning);
         }
     }
+    return static_cast<unsigned int>((freq_coarse * 1000000) + (freq_fine * 1000));
+}
+
+// #############################################################################
+// Thread-safe getter for current frequency in Hz
+unsigned int FrequencyController::getCurrentFreqHz() const {
+    std::lock_guard<std::recursive_mutex> lock(freqMutex);
     return static_cast<unsigned int>((freq_coarse * 1000000) + (freq_fine * 1000));
 }

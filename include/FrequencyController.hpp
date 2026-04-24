@@ -1,7 +1,3 @@
-#ifndef FLIGHTSIMBRIDGE_FWD_DECL
-#define FLIGHTSIMBRIDGE_FWD_DECL
-class FlightSimBridge;
-#endif
 // #############################################################################
 // ##                                                                         ##
 // ## FrequencyController.hpp                  (c) Wolfram Plettscher 04/2026 ##
@@ -12,6 +8,7 @@ class FlightSimBridge;
 #include <mutex>
 #include "EventTypes.hpp"
 #include "Config.hpp"
+#include "FlightSimBridge.hpp"
 
 class FrequencyController {
 public:
@@ -40,6 +37,11 @@ public:
     void decreaseFine();
     void increaseCoarse();
     void decreaseCoarse();
+
+    /**
+     * Get the current frequency in Hz (thread-safe).
+     */
+    unsigned int getCurrentFreqHz() const;
     // No frequency calculation methods needed; freq_coarse and freq_fine are the only state.
         /**
          * Set the bridge pointer for cockpit communication.
