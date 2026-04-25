@@ -15,29 +15,28 @@ struct Com1FreqStruct {
 };
 #pragma pack(pop)
 
-// SimConnect data definition ID and request ID for COM1 frequency
+// SimConnect data definition IDs and request IDs for COM1 and NAV1 frequency
 enum : DWORD {
     DATA_DEFINITION_COM1_FREQ = 1,
-    DATA_REQUEST_COM1_FREQ = 1
+    DATA_REQUEST_COM1_FREQ = 1,
+    DATA_DEFINITION_NAV1_FREQ = 2,
+    DATA_REQUEST_NAV1_FREQ = 2
 };
 
 // #############################################################################
 unsigned int FlightSimClient::readCom1Freq() {
     if (!connected || !hFlightSim) return 0;
     HRESULT hr;
-    // Define the data structure for standby COM1 frequency (correct SimConnect variable and unit)
     hr = SimConnect_AddToDataDefinition(hFlightSim, DATA_DEFINITION_COM1_FREQ, "COM STANDBY FREQUENCY:1", "MHz");
     if (FAILED(hr)) {
         Logger::log("[SimConnect] Failed to add data definition for COM1 freq", Logger::Level::Error);
         return 0;
     }
-    // Request the data
     hr = SimConnect_RequestDataOnSimObject(hFlightSim, DATA_REQUEST_COM1_FREQ, DATA_DEFINITION_COM1_FREQ, SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD_ONCE);
     if (FAILED(hr)) {
         Logger::log("[SimConnect] Failed to request COM1 freq", Logger::Level::Error);
         return 0;
     }
-    // Wait for the response synchronously (simple polling, timeout after 1s)
     Com1FreqStruct freqData = {0};
     bool gotData = false;
     DWORD startTick = GetTickCount();
@@ -60,11 +59,54 @@ unsigned int FlightSimClient::readCom1Freq() {
         Logger::log("[SimConnect] Timeout waiting for COM1 freq", Logger::Level::Warning);
         return 0;
     }
-    // Convert MHz to Hz (e.g. 118.000 MHz -> 118000000), rounding to nearest 1 kHz
     unsigned int freq = static_cast<unsigned int>(freqData.com1_freq * 1000.0 + 0.5) * 1000;
     std::ostringstream oss;
     oss.precision(3);
     oss << std::fixed << "[SimConnect] Read COM1 freq: " << (freqData.com1_freq) << " MHz (" << freq << " Hz)";
+    Logger::log(oss.str());
+    return freq;
+}
+
+// #############################################################################
+unsigned int FlightSimClient::readNav1Freq() {
+    if (!connected || !hFlightSim) return 0;
+    HRESULT hr;
+    hr = SimConnect_AddToDataDefinition(hFlightSim, DATA_DEFINITION_NAV1_FREQ, "NAV STANDBY FREQUENCY:1", "MHz");
+    if (FAILED(hr)) {
+        Logger::log("[SimConnect] Failed to add data definition for NAV1 freq", Logger::Level::Error);
+        return 0;
+    }
+    hr = SimConnect_RequestDataOnSimObject(hFlightSim, DATA_REQUEST_NAV1_FREQ, DATA_DEFINITION_NAV1_FREQ, SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD_ONCE);
+    if (FAILED(hr)) {
+        Logger::log("[SimConnect] Failed to request NAV1 freq", Logger::Level::Error);
+        return 0;
+    }
+    Com1FreqStruct freqData = {0};
+    bool gotData = false;
+    DWORD startTick = GetTickCount();
+    while (!gotData && (GetTickCount() - startTick < 3000)) {
+        SIMCONNECT_RECV* pData = nullptr;
+        DWORD cbData = 0;
+        hr = SimConnect_GetNextDispatch(hFlightSim, &pData, &cbData);
+        if (SUCCEEDED(hr) && pData) {
+            if (pData->dwID == SIMCONNECT_RECV_ID_SIMOBJECT_DATA) {
+                auto* pObj = reinterpret_cast<SIMCONNECT_RECV_SIMOBJECT_DATA*>(pData);
+                if (pObj->dwRequestID == DATA_REQUEST_NAV1_FREQ) {
+                    freqData = *reinterpret_cast<Com1FreqStruct*>(&pObj->dwData);
+                    gotData = true;
+                }
+            }
+        }
+        Sleep(10);
+    }
+    if (!gotData) {
+        Logger::log("[SimConnect] Timeout waiting for NAV1 freq", Logger::Level::Warning);
+        return 0;
+    }
+    unsigned int freq = static_cast<unsigned int>(freqData.com1_freq * 1000.0 + 0.5) * 1000;
+    std::ostringstream oss;
+    oss.precision(3);
+    oss << std::fixed << "[SimConnect] Read NAV1 freq: " << (freqData.com1_freq) << " MHz (" << freq << " Hz)";
     Logger::log(oss.str());
     return freq;
 }

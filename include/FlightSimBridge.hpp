@@ -16,8 +16,9 @@ public:
     bool connect();
     void disconnect();
     bool isConnected() const;
-    // Expose synchronous COM1 frequency read
+    // Expose synchronous COM1 and NAV1 frequency read
     unsigned int readCom1Freq();
+    unsigned int readNav1Freq();
 
 private:
     FlightSimClient flightSimClient;

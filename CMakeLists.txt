@@ -36,6 +36,7 @@ set(SOURCES
 	src/Logger.cpp
 	src/UdpCommandHandler.cpp
 	src/FrequencyController.cpp
+	src/FrequencyControllerCom.cpp
 )
 add_executable(MSFS_bridge ${SOURCES})
 

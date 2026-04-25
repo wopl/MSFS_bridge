@@ -47,3 +47,8 @@ bool FlightSimBridge::isConnected() const {
 unsigned int FlightSimBridge::readCom1Freq() {
     return flightSimClient.readCom1Freq();
 }
+
+// #############################################################################
+unsigned int FlightSimBridge::readNav1Freq() {
+    return flightSimClient.readNav1Freq();
+}
