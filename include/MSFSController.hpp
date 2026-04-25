@@ -42,14 +42,17 @@ public:
     void markInstrumentUpdateComplete(const std::string& instrumentKey, bool success);
     void checkPendingEventTimeouts();
 private:
+    class FrequencyController* controllerForEvent(EventType type) const;
+    class FrequencyController* controllerForInstrumentKey(const std::string& instrumentKey) const;
     bool isFrequencyStepEvent(EventType type) const;
     bool isFlipEvent(EventType type) const;
     bool isFrequencyRequestEvent(EventType type) const;
-    std::string activeInstrumentKey() const;
+    std::string activeInstrumentKey(EventType type) const;
     FlightSimBridge bridge;
     std::atomic<bool> running{false};
     // Control modules
-    class FrequencyController* frequencyController;
+    class FrequencyController* comFrequencyController;
+    class FrequencyController* navFrequencyController;
     std::queue<MsfsEvent> eventQueue;
     std::vector<MsfsEvent> pendingEvents; // Events waiting for instrument update
     std::mutex queueMutex;

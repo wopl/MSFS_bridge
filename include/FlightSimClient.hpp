@@ -7,6 +7,7 @@
 #include <windows.h>
 #include <SimConnect.h>
 #include <string>
+#include <unordered_map>
 
 
 class FlightSimClient {
@@ -26,4 +27,5 @@ public:
 private:
     HANDLE hFlightSim;
     bool connected;
+    std::unordered_map<DWORD, std::string> mappedClientEvents;
 };

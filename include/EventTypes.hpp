@@ -68,7 +68,7 @@ static const EventRegistryEntry eventRegistry[] = {
     {EventType::NAV1_FREQ_FINE_DOWN, "NAV1_STBY_SET"},
     {EventType::NAV1_FREQ_COARSE_UP, "NAV1_STBY_SET"},
     {EventType::NAV1_FREQ_COARSE_DOWN, "NAV1_STBY_SET"},
-    {EventType::NAV1_STBY_FLIP,      "NAV1_STBY_RADIO_SWAP"},
+    {EventType::NAV1_STBY_FLIP,      "NAV1_RADIO_SWAP"},
     // Add more as needed
 };
 
@@ -95,7 +95,7 @@ static const std::unordered_map<std::string, unsigned int> msfsEventNameToId = {
     {"COM1_FREQ_REQUEST", 0x00012000},
     // NAV1 event IDs (match SET and SWAP)
     {"NAV1_STBY_SET", 0x00012010},
-    {"NAV1_STBY_RADIO_SWAP", 0x00012015},
+    {"NAV1_RADIO_SWAP", 0x00012015},
     // Add more as needed
 };
 

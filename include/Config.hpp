@@ -22,6 +22,7 @@ namespace Config {
         int fineMin;
         int fineMax;
         int fineStep;
+        int fineUnitHz;
 
         // Event names
         const char* eventSetHz;
@@ -48,6 +49,7 @@ namespace Config {
         .fineMin = 0,
         .fineMax = 995,
         .fineStep = 5,
+        .fineUnitHz = 1000,
         .eventSetHz = "COM_STBY_RADIO_SET_HZ",
         .eventSwap = "COM_STBY_RADIO_SWAP",
         .eventRequestFreq = "COM1_FREQ_REQUEST",
@@ -66,10 +68,11 @@ namespace Config {
         .coarseMin = 108,
         .coarseMax = 117,
         .fineMin = 0,
-        .fineMax = 950,
-        .fineStep = 10,
+        .fineMax = 95,
+        .fineStep = 5,
+        .fineUnitHz = 10000,
         .eventSetHz = "NAV1_STBY_SET",
-        .eventSwap = "NAV1_STBY_RADIO_SWAP",
+        .eventSwap = "NAV1_RADIO_SWAP",
         .eventRequestFreq = nullptr,
         .eventRequestType = EventType::REQUEST_NAV1_FREQ,
         .eventSetHzId = 0x00012010,

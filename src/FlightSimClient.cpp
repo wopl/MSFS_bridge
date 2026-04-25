@@ -137,6 +137,7 @@ void FlightSimClient::disconnect() {
         SimConnect_Close(hFlightSim);
         hFlightSim = nullptr;
         connected = false;
+        mappedClientEvents.clear();
     }
 }
 
@@ -148,6 +149,21 @@ bool FlightSimClient::isConnected() const {
 // #############################################################################
 bool FlightSimClient::mapEvent(DWORD eventId, const char* simEventName) {
     if (!connected) return false;
+    const std::string simEvent = (simEventName != nullptr) ? simEventName : "";
+
+    auto existing = mappedClientEvents.find(eventId);
+    if (existing != mappedClientEvents.end()) {
+        if (existing->second == simEvent) {
+            return true;
+        }
+        std::ostringstream oss;
+        oss << "Client event ID 0x" << std::hex << eventId
+            << " already mapped to '" << existing->second
+            << "', cannot remap to '" << simEvent << "'";
+        Logger::log(oss.str(), Logger::Level::Error);
+        return false;
+    }
+
     HRESULT result = SimConnect_MapClientEventToSimEvent(hFlightSim, eventId, simEventName);
     if (FAILED(result)) {
         std::ostringstream oss;
@@ -155,6 +171,8 @@ bool FlightSimClient::mapEvent(DWORD eventId, const char* simEventName) {
         Logger::log(oss.str(), Logger::Level::Error);
         return false;
     }
+
+    mappedClientEvents[eventId] = simEvent;
     return true;
 }
 

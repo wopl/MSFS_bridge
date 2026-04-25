@@ -12,6 +12,32 @@
 #include <sstream>
 #include <iomanip>
 
+namespace {
+
+constexpr unsigned int toBcd(unsigned int value) {
+	unsigned int bcd = 0;
+	unsigned int shift = 0;
+	while (value > 0) {
+		bcd |= (value % 10) << (shift * 4);
+		value /= 10;
+		++shift;
+	}
+	return bcd;
+}
+
+static_assert(toBcd(11390) == 0x11390, "NAV BCD encoding regression: expected 113.90 MHz -> 0x11390");
+
+unsigned int encodeFrequencyEventData(const Config::RadioConfig& cfg, int coarse, int fine) {
+	if (cfg.eventSetHz != nullptr && std::string(cfg.eventSetHz) == "NAV1_STBY_SET") {
+		// NAV1_STBY_SET expects BCD frequency in MHz*100 (e.g., 113.90 -> 11390 -> 0x11390).
+		const unsigned int navFreqTimes100 = static_cast<unsigned int>(coarse * 100 + fine);
+		return toBcd(navFreqTimes100);
+	}
+	return static_cast<unsigned int>((coarse * 1000000) + (fine * cfg.fineUnitHz));
+}
+
+}
+
 // #############################################################################
 // Helper: extract freq_coarse and freq_fine from Hz
 // [REFACTORED] Uses config-driven fineStep instead of hardcoded 5 kHz
@@ -19,8 +45,8 @@ void FrequencyController::syncStateFromCockpitHz(unsigned int freq_hz) {
 	const auto& cfg = getConfig();
 	freq_coarse = static_cast<int>(freq_hz / 1000000);
 	int remainder = static_cast<int>(freq_hz % 1000000);
-	// Round down to nearest fineStep (e.g., 5 kHz for COM1, may differ for other radios)
-	freq_fine = (remainder / 1000) / cfg.fineStep * cfg.fineStep;
+	// Fine digits are config-driven (e.g., COM1 uses 1 kHz units, NAV1 uses 10 kHz units).
+	freq_fine = (remainder / cfg.fineUnitHz) / cfg.fineStep * cfg.fineStep;
 }
 // #############################################################################
 bool FrequencyController::shouldRequestUpdate() const {
@@ -115,7 +141,7 @@ MsfsEvent FrequencyController::requestFrequency() {
 		// Virtual hook: child class provides bridge read (e.g., readCom1Freq or readNav1Freq)
 		unsigned int freq = readStandbyFreqFromBridge(*bridge);
 		syncStateFromCockpitHz(freq);
-		evt.data = static_cast<unsigned int>((freq_coarse * 1000000) + (freq_fine * 1000));
+		evt.data = static_cast<unsigned int>((freq_coarse * 1000000) + (freq_fine * cfg.fineUnitHz));
 		std::ostringstream oss;
 		oss << std::fixed << std::setprecision(3);
 		oss << "[FREQ] Requested " << radioName << " frequency from cockpit: " << (static_cast<double>(evt.data) / 1e6) << " MHz (" << evt.data << " Hz)";
@@ -199,7 +225,7 @@ MsfsEvent FrequencyController::createFrequencyEvent(EventType type) {
 	evt.name = radioName + " Frequency (" + actionName + ")";
 	int after_coarse = freq_coarse;
 	int after_fine = freq_fine;
-	evt.data = static_cast<unsigned int>((freq_coarse * 1000000) + (freq_fine * 1000));
+	evt.data = encodeFrequencyEventData(cfg, freq_coarse, freq_fine);
 	std::ostringstream oss;
 	oss << "[FREQ-DEBUG] Event: " << evt.name
 		<< ", Before: coarse=" << before_coarse << ", fine=" << before_fine
@@ -234,14 +260,16 @@ unsigned int FrequencyController::fetchFreqNonBlocking() {
 			Logger::log("[ASYNC] Non-blocking fetch failed to read " + radioName + " frequency", Logger::Level::Warning);
 		}
 	}
-	return static_cast<unsigned int>((freq_coarse * 1000000) + (freq_fine * 1000));
+	const auto& cfg = getConfig();
+	return static_cast<unsigned int>((freq_coarse * 1000000) + (freq_fine * cfg.fineUnitHz));
 }
 
 // #############################################################################
 // Thread-safe getter for current frequency in Hz
 unsigned int FrequencyController::getCurrentFreqHz() const {
 	std::lock_guard<std::recursive_mutex> lock(freqMutex);
-	return static_cast<unsigned int>((freq_coarse * 1000000) + (freq_fine * 1000));
+	const auto& cfg = getConfig();
+	return static_cast<unsigned int>((freq_coarse * 1000000) + (freq_fine * cfg.fineUnitHz));
 }
 
 // #############################################################################
