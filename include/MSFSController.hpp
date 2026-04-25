@@ -9,8 +9,6 @@
 #include <thread>
 #include <chrono>
 #include <iostream>
-
-#include "msfs_events.hpp"
 #include <queue>
 #include <mutex>
 
@@ -44,6 +42,10 @@ public:
     void markInstrumentUpdateComplete(const std::string& instrumentKey, bool success);
     void checkPendingEventTimeouts();
 private:
+    bool isFrequencyStepEvent(EventType type) const;
+    bool isFlipEvent(EventType type) const;
+    bool isFrequencyRequestEvent(EventType type) const;
+    std::string activeInstrumentKey() const;
     FlightSimBridge bridge;
     std::atomic<bool> running{false};
     // Control modules

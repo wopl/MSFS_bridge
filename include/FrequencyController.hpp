@@ -26,8 +26,12 @@ public:
     void increaseCoarse();
     void decreaseCoarse();
     unsigned int getCurrentFreqHz() const;
-    void setFreqFromHz(unsigned int freq_hz);
+    void syncStateFromCockpitHz(unsigned int freq_hz);
     void setBridge(FlightSimBridge* bridgePtr);
+    bool isFrequencyStepEvent(EventType type) const;
+    bool isFlipEvent(EventType type) const;
+    bool isFrequencyRequestEvent(EventType type) const;
+    std::string getInstrumentKey() const;
 protected:
     virtual const Config::RadioConfig& getConfig() const = 0;
     virtual unsigned int readStandbyFreqFromBridge(FlightSimBridge& bridge) const = 0;

@@ -13,31 +13,48 @@
 #include "FrequencyControllerCom.hpp"
 
 // #############################################################################
+bool MSFSController::isFrequencyStepEvent(EventType type) const {
+    return frequencyController && frequencyController->isFrequencyStepEvent(type);
+}
+
+// #############################################################################
+bool MSFSController::isFlipEvent(EventType type) const {
+    return frequencyController && frequencyController->isFlipEvent(type);
+}
+
+// #############################################################################
+bool MSFSController::isFrequencyRequestEvent(EventType type) const {
+    return frequencyController && frequencyController->isFrequencyRequestEvent(type);
+}
+
+// #############################################################################
+std::string MSFSController::activeInstrumentKey() const {
+    return frequencyController ? frequencyController->getInstrumentKey() : "RADIO";
+}
+
+// #############################################################################
 void MSFSController::queueEvent(EventType type) {
     MsfsEvent evt;
     bool needsInstrumentUpdate = false;
     std::string instrumentKey;
-    switch (type) {
-        // COM1 events
-        case EventType::COM1_FREQ_FINE_UP:
-        case EventType::COM1_FREQ_FINE_DOWN:
-        case EventType::COM1_FREQ_COARSE_UP:
-        case EventType::COM1_FREQ_COARSE_DOWN:
-            if (!frequencyController) return;
-            if (frequencyController->shouldRequestUpdate()) {
-                needsInstrumentUpdate = true;
-                instrumentKey = "COM1";
-            }
-            evt = frequencyController->createFrequencyEvent(type);
-            break;
-        case EventType::COM1_STBY_FLIP:
-            if (!frequencyController) return;
-            evt = frequencyController->createFlipEvent();
-            break;
-        case EventType::REQUEST_COM1_FREQ:
-            if (!frequencyController) return;
-            evt = frequencyController->requestFrequency();
-            break;
+    if (isFrequencyStepEvent(type)) {
+        if (!frequencyController) return;
+        instrumentKey = activeInstrumentKey();
+        if (frequencyController->shouldRequestUpdate()) {
+            needsInstrumentUpdate = true;
+        }
+        evt = frequencyController->createFrequencyEvent(type);
+        evt.instrumentKey = instrumentKey;
+    } else if (isFlipEvent(type)) {
+        if (!frequencyController) return;
+        evt = frequencyController->createFlipEvent();
+        evt.instrumentKey = activeInstrumentKey();
+    } else if (isFrequencyRequestEvent(type)) {
+        if (!frequencyController) return;
+        evt = frequencyController->requestFrequency();
+        evt.instrumentKey = activeInstrumentKey();
+    } else {
+        switch (type) {
         case EventType::BRAKE_SET: {
             evt.type = type;
             evt.name = "Parking Brake";
@@ -49,13 +66,14 @@ void MSFSController::queueEvent(EventType type) {
                 }
             }
             auto idIt = msfsEventNameToId.find(evt.simEventName);
-            evt.eventId = (idIt != msfsEventNameToId.end()) ? idIt->second : EVENT_PARK_BRAKES;
+            evt.eventId = (idIt != msfsEventNameToId.end()) ? idIt->second : Config::EVENT_PARK_BRAKES_ID;
             if (evt.simEventName.empty()) evt.simEventName = "PARKING_BRAKES";
             break;
         }
         default:
             Logger::log("[QUEUE] Unknown or unhandled EventType");
             return;
+        }
     }
     if (needsInstrumentUpdate) {
         evt.state = MsfsEventState::PendingInstrumentUpdate;
@@ -63,23 +81,14 @@ void MSFSController::queueEvent(EventType type) {
         evt.requestTime = std::chrono::steady_clock::now();
         std::lock_guard<std::mutex> lock(queueMutex);
         pendingEvents.push_back(evt);
-        // Queue the async update request event
-        MsfsEvent updateEvt;
-        if (instrumentKey == "COM1") {
-            updateEvt.type = EventType::REQUEST_COM1_FREQ;
-            updateEvt.name = "Async Request COM1 Frequency";
-            updateEvt.simEventName = "COM1_FREQ_REQUEST";
-        }
+        // Queue a generic async update request via controller config.
+        MsfsEvent updateEvt = frequencyController->requestFrequency();
+        updateEvt.instrumentKey = instrumentKey;
         updateEvt.state = MsfsEventState::Ready;
         eventQueue.push(updateEvt);
         Logger::log("[QUEUE] Queued pending event and async update request for " + instrumentKey);
     } else {
-        if (evt.simEventName.find("COM1") != std::string::npos || evt.name.find("COM1") != std::string::npos) {
-            std::ostringstream oss;
-            oss.precision(3);
-            oss << std::fixed << "[QUEUE] Queuing event: " << evt.simEventName << ", data=" << (evt.data / 1e6) << " MHz (" << evt.data << " Hz)";
-            Logger::log(oss.str());
-        } else if (evt.simEventName.find("NAV1") != std::string::npos || evt.name.find("NAV1") != std::string::npos) {
+        if (!evt.instrumentKey.empty()) {
             std::ostringstream oss;
             oss.precision(3);
             oss << std::fixed << "[QUEUE] Queuing event: " << evt.simEventName << ", data=" << (evt.data / 1e6) << " MHz (" << evt.data << " Hz)";
@@ -106,33 +115,13 @@ void MSFSController::markInstrumentUpdateComplete(const std::string& instrumentK
             evt.state = success ? MsfsEventState::Ready : MsfsEventState::FailedTimeout;
             if (success) {
                 // After cockpit fetch, apply the original frequency event to the updated state
-                if (frequencyController) {
-                    // Only apply if this is a frequency event
-                    switch (evt.type) {
-                        // COM1
-                        case EventType::COM1_FREQ_FINE_UP:
-                            frequencyController->increaseFine();
-                            evt.name = "COM1 Frequency (FINE_UP)";
-                            evt.data = frequencyController->getCurrentFreqHz();
-                            break;
-                        case EventType::COM1_FREQ_FINE_DOWN:
-                            frequencyController->decreaseFine();
-                            evt.name = "COM1 Frequency (FINE_DOWN)";
-                            evt.data = frequencyController->getCurrentFreqHz();
-                            break;
-                        case EventType::COM1_FREQ_COARSE_UP:
-                            frequencyController->increaseCoarse();
-                            evt.name = "COM1 Frequency (COARSE_UP)";
-                            evt.data = frequencyController->getCurrentFreqHz();
-                            break;
-                        case EventType::COM1_FREQ_COARSE_DOWN:
-                            frequencyController->decreaseCoarse();
-                            evt.name = "COM1 Frequency (COARSE_DOWN)";
-                            evt.data = frequencyController->getCurrentFreqHz();
-                            break;
-                        default:
-                            break;
-                    }
+                if (frequencyController && isFrequencyStepEvent(evt.type)) {
+                    // Rebuild the event using controller logic (config-driven and radio-agnostic).
+                    MsfsEvent appliedEvt = frequencyController->createFrequencyEvent(evt.type);
+                    evt.name = appliedEvt.name;
+                    evt.data = appliedEvt.data;
+                    evt.simEventName = appliedEvt.simEventName;
+                    evt.eventId = appliedEvt.eventId;
                     std::ostringstream oss;
                     oss << "[ASYNC-DEBUG] Applied pending event after cockpit fetch: type=" << static_cast<int>(evt.type)
                         << ", data=" << evt.data;
@@ -175,9 +164,12 @@ MSFSController::MSFSController() : bridge() {
 
 // #############################################################################
 void MSFSController::dispatchEvent(const MsfsEvent& evt) {
-    if (evt.type == EventType::REQUEST_COM1_FREQ) {
+    if (isFrequencyRequestEvent(evt.type)) {
         // Async: launch frequency fetch in a separate thread
-        std::string instrumentKey = "COM1";
+        std::string instrumentKey = evt.instrumentKey;
+        if (instrumentKey.empty()) {
+            instrumentKey = activeInstrumentKey();
+        }
         Logger::log("[ASYNC] Starting async cockpit fetch for " + instrumentKey);
         std::thread([this, instrumentKey, evt]() {
             bool success = false;
@@ -189,13 +181,7 @@ void MSFSController::dispatchEvent(const MsfsEvent& evt) {
         }).detach();
         return;
     }
-    if (evt.simEventName.find("COM1") != std::string::npos || evt.name.find("COM1") != std::string::npos) {
-        std::ostringstream oss;
-        oss.precision(3);
-        oss << std::fixed << "[DISPATCH] Mapping event: " << evt.simEventName << " (ID: 0x"
-            << std::hex << evt.eventId << ") with data: " << (evt.data / 1e6) << " MHz (" << evt.data << " Hz)";
-        Logger::log(oss.str());
-    } else if (evt.simEventName.find("NAV1") != std::string::npos || evt.name.find("NAV1") != std::string::npos) {
+    if (!evt.instrumentKey.empty()) {
         std::ostringstream oss;
         oss.precision(3);
         oss << std::fixed << "[DISPATCH] Mapping event: " << evt.simEventName << " (ID: 0x"
@@ -211,12 +197,7 @@ void MSFSController::dispatchEvent(const MsfsEvent& evt) {
     }
     bool sent = bridge.sendEvent(evt.eventId, evt.data);
     if (sent) {
-        if (evt.simEventName.find("COM1") != std::string::npos || evt.name.find("COM1") != std::string::npos) {
-            std::ostringstream oss;
-            oss.precision(3);
-            oss << std::fixed << "[DISPATCH] " << evt.name << " dispatched with data: " << (evt.data / 1e6) << " MHz (" << evt.data << " Hz)";
-            Logger::log(oss.str());
-        } else if (evt.simEventName.find("NAV1") != std::string::npos || evt.name.find("NAV1") != std::string::npos) {
+        if (!evt.instrumentKey.empty()) {
             std::ostringstream oss;
             oss.precision(3);
             oss << std::fixed << "[DISPATCH] " << evt.name << " dispatched with data: " << (evt.data / 1e6) << " MHz (" << evt.data << " Hz)";

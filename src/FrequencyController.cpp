@@ -15,7 +15,7 @@
 // #############################################################################
 // Helper: extract freq_coarse and freq_fine from Hz
 // [REFACTORED] Uses config-driven fineStep instead of hardcoded 5 kHz
-void FrequencyController::setFreqFromHz(unsigned int freq_hz) {
+void FrequencyController::syncStateFromCockpitHz(unsigned int freq_hz) {
 	const auto& cfg = getConfig();
 	freq_coarse = static_cast<int>(freq_hz / 1000000);
 	int remainder = static_cast<int>(freq_hz % 1000000);
@@ -37,6 +37,31 @@ void FrequencyController::setBridge(FlightSimBridge* bridgePtr) {
 }
 
 // #############################################################################
+bool FrequencyController::isFrequencyStepEvent(EventType type) const {
+	const auto& cfg = getConfig();
+	return type == cfg.eventFineUp ||
+		type == cfg.eventFineDown ||
+		type == cfg.eventCoarseUp ||
+		type == cfg.eventCoarseDown;
+}
+
+// #############################################################################
+bool FrequencyController::isFlipEvent(EventType type) const {
+	return type == getConfig().eventFlipType;
+}
+
+// #############################################################################
+bool FrequencyController::isFrequencyRequestEvent(EventType type) const {
+	return type == getConfig().eventRequestType;
+}
+
+// #############################################################################
+std::string FrequencyController::getInstrumentKey() const {
+	const auto& cfg = getConfig();
+	return (cfg.name != nullptr) ? cfg.name : "RADIO";
+}
+
+// #############################################################################
 // [REFACTORED] Generic config-driven, fully abstracted from COM1
 void FrequencyController::refreshFreqFromCockpitIfNeeded() {
 	std::lock_guard<std::recursive_mutex> lock(freqMutex);
@@ -52,7 +77,7 @@ void FrequencyController::refreshFreqFromCockpitIfNeeded() {
 		// Virtual hook: child class provides bridge read (e.g., readCom1Freq or readNav1Freq)
 		unsigned int cockpitFreq = readStandbyFreqFromBridge(*bridge);
 		if (cockpitFreq != 0) {
-			setFreqFromHz(cockpitFreq);
+			syncStateFromCockpitHz(cockpitFreq);
 			std::ostringstream oss;
 			oss << std::fixed << std::setprecision(3);
 			oss << "[FREQ-COCKPIT] Overwriting local state from cockpit: "
@@ -89,7 +114,7 @@ MsfsEvent FrequencyController::requestFrequency() {
 	if (bridge && bridge->isConnected()) {
 		// Virtual hook: child class provides bridge read (e.g., readCom1Freq or readNav1Freq)
 		unsigned int freq = readStandbyFreqFromBridge(*bridge);
-		setFreqFromHz(freq);
+		syncStateFromCockpitHz(freq);
 		evt.data = static_cast<unsigned int>((freq_coarse * 1000000) + (freq_fine * 1000));
 		std::ostringstream oss;
 		oss << std::fixed << std::setprecision(3);
@@ -193,7 +218,7 @@ unsigned int FrequencyController::fetchFreqNonBlocking() {
 		// Virtual hook: child class provides bridge read (e.g., readCom1Freq or readNav1Freq)
 		freq = readStandbyFreqFromBridge(*bridge);
 		if (freq != 0) {
-			setFreqFromHz(freq);
+			syncStateFromCockpitHz(freq);
 			// Get radio-specific config for logging (COM1, NAV1, etc.)
 			const auto& cfg = getConfig();
 			const std::string radioName = (cfg.name != nullptr) ? cfg.name : "RADIO";
@@ -230,26 +255,12 @@ MsfsEvent FrequencyController::createFlipEvent() {
 	// Swap event metadata is fully config-driven (no hardcoded COM1).
 	evt.simEventName = cfg.eventSwap;
 	evt.eventId = cfg.eventSwapId;
+	evt.type = cfg.eventFlipType;
 	// Keep a readable event label in logs/queue traces.
 	evt.name = radioName + " Standby Flip";
-
-	// Infer flip event type from configured sim event name via registry lookup.
-	// This decouples us from hardcoding EventType.COM1_STANDBY_FLIP, etc.
-	EventType resolvedType = static_cast<EventType>(0);
-	bool foundType = false;
-	for (const auto& entry : eventRegistry) {
-		if (entry.msfsEventName != nullptr && evt.simEventName == entry.msfsEventName) {
-			resolvedType = entry.type;
-			foundType = true;
-			break;
-		}
-	}
-	evt.type = resolvedType;
-	// Warn if config and registry drift apart; this helps catch mapping regressions.
-	if (!foundType) {
-		Logger::log("[FREQ] Could not resolve EventType from configured swap event name: " + evt.simEventName, Logger::Level::Warning);
-	}
 	evt.data = 0;
+	// After a swap, local standby state is stale. Force next operation to refresh from cockpit.
+	firstFreqEvent = true;
 	Logger::log("[FREQ] Created " + radioName + " flip event: " + evt.simEventName);
 	return evt;
 }

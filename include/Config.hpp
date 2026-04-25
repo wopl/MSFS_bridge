@@ -4,7 +4,6 @@
 // ##                                                                         ##
 // #############################################################################
 #pragma once
-#include <string>
 #include "EventTypes.hpp"
 
 namespace Config {
@@ -12,21 +11,8 @@ namespace Config {
     // UDP
     constexpr int UDP_PORT = 49000;
 
-    // COM1 Radio Commands
-    constexpr const char* CMD_COM1_STBY_FINE_DOWN_833 = "sim/radios/stby_com1_fine_down_833";
-    constexpr const char* CMD_COM1_STBY_FINE_UP_833 = "sim/radios/stby_com1_fine_up_833";
-    constexpr const char* CMD_COM1_STBY_COARSE_DOWN_833 = "sim/radios/stby_com1_coarse_down_833";
-    constexpr const char* CMD_COM1_STBY_COARSE_UP_833 = "sim/radios/stby_com1_coarse_up_833";
-    constexpr const char* CMD_COM1_FLIP = "sim/radios/com1_standy_flip";
-    constexpr const char* CMD_COM1_FREQ_UP = "sim/radios/com1_freq_up_833";
-
-    // NAV1 Radio Commands
-    constexpr const char* CMD_NAV1_STBY_FINE_DOWN = "sim/radios/stby_nav1_fine_down";
-    constexpr const char* CMD_NAV1_STBY_FINE_UP = "sim/radios/stby_nav1_fine_up";
-    constexpr const char* CMD_NAV1_STBY_COARSE_DOWN = "sim/radios/stby_nav1_coarse_down";
-    constexpr const char* CMD_NAV1_STBY_COARSE_UP = "sim/radios/stby_nav1_coarse_up";
-    constexpr const char* CMD_NAV1_FLIP = "sim/radios/nav1_standy_flip";
-
+    // Generic fallback event IDs
+    constexpr unsigned int EVENT_PARK_BRAKES_ID = 0x00011000;
 
     // Frequency config struct (C++20 designated initializers for readability)
     struct RadioConfig {
@@ -36,13 +22,6 @@ namespace Config {
         int fineMin;
         int fineMax;
         int fineStep;
-
-        // Command strings
-        const char* cmdFineUp;
-        const char* cmdFineDown;
-        const char* cmdCoarseUp;
-        const char* cmdCoarseDown;
-        const char* cmdFlip;
 
         // Event names
         const char* eventSetHz;
@@ -58,6 +37,7 @@ namespace Config {
         EventType eventFineDown;
         EventType eventCoarseUp;
         EventType eventCoarseDown;
+        EventType eventFlipType;
     };
 
     // COM1 and NAV1 config instances (C++20 designated initializers)
@@ -68,11 +48,6 @@ namespace Config {
         .fineMin = 0,
         .fineMax = 995,
         .fineStep = 5,
-        .cmdFineUp = CMD_COM1_STBY_FINE_UP_833,
-        .cmdFineDown = CMD_COM1_STBY_FINE_DOWN_833,
-        .cmdCoarseUp = CMD_COM1_STBY_COARSE_UP_833,
-        .cmdCoarseDown = CMD_COM1_STBY_COARSE_DOWN_833,
-        .cmdFlip = CMD_COM1_FLIP,
         .eventSetHz = "COM_STBY_RADIO_SET_HZ",
         .eventSwap = "COM_STBY_RADIO_SWAP",
         .eventRequestFreq = "COM1_FREQ_REQUEST",
@@ -83,7 +58,8 @@ namespace Config {
         .eventFineUp = EventType::COM1_FREQ_FINE_UP,
         .eventFineDown = EventType::COM1_FREQ_FINE_DOWN,
         .eventCoarseUp = EventType::COM1_FREQ_COARSE_UP,
-        .eventCoarseDown = EventType::COM1_FREQ_COARSE_DOWN
+        .eventCoarseDown = EventType::COM1_FREQ_COARSE_DOWN,
+        .eventFlipType = EventType::COM1_STBY_FLIP
     };
     constexpr RadioConfig NAV1_CONFIG = {
         .name = "NAV1",
@@ -92,11 +68,6 @@ namespace Config {
         .fineMin = 0,
         .fineMax = 950,
         .fineStep = 10,
-        .cmdFineUp = CMD_NAV1_STBY_FINE_UP,
-        .cmdFineDown = CMD_NAV1_STBY_FINE_DOWN,
-        .cmdCoarseUp = CMD_NAV1_STBY_COARSE_UP,
-        .cmdCoarseDown = CMD_NAV1_STBY_COARSE_DOWN,
-        .cmdFlip = CMD_NAV1_FLIP,
         .eventSetHz = "NAV1_STBY_SET",
         .eventSwap = "NAV1_STBY_RADIO_SWAP",
         .eventRequestFreq = nullptr,
@@ -107,7 +78,8 @@ namespace Config {
         .eventFineUp = EventType::NAV1_FREQ_FINE_UP,
         .eventFineDown = EventType::NAV1_FREQ_FINE_DOWN,
         .eventCoarseUp = EventType::NAV1_FREQ_COARSE_UP,
-        .eventCoarseDown = EventType::NAV1_FREQ_COARSE_DOWN
+        .eventCoarseDown = EventType::NAV1_FREQ_COARSE_DOWN,
+        .eventFlipType = EventType::NAV1_STBY_FLIP
     };
 
     // Add more configuration constants as needed

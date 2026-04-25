@@ -9,7 +9,6 @@
 #include "UdpCommandHandler.hpp"
 #include "Logger.hpp"
 #include "Config.hpp"
-#include "msfs_events.hpp"
 
 // #############################################################################
 int main() {
