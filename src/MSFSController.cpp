@@ -32,31 +32,11 @@ void MSFSController::queueEvent(EventType type) {
             break;
         case EventType::COM1_STBY_FLIP:
             if (!frequencyController) return;
-            evt = frequencyController->createCom1FlipEvent();
+            evt = frequencyController->createFlipEvent();
             break;
         case EventType::REQUEST_COM1_FREQ:
             if (!frequencyController) return;
-            evt = frequencyController->requestCom1Frequency();
-            break;
-        // NAV1 events
-        case EventType::NAV1_FREQ_FINE_UP:
-        case EventType::NAV1_FREQ_FINE_DOWN:
-        case EventType::NAV1_FREQ_COARSE_UP:
-        case EventType::NAV1_FREQ_COARSE_DOWN:
-            if (!frequencyController) return;
-            if (frequencyController->shouldRequestNav1Update()) {
-                needsInstrumentUpdate = true;
-                instrumentKey = "NAV1";
-            }
-            evt = frequencyController->createNav1FrequencyEvent(type);
-            break;
-        case EventType::NAV1_STBY_FLIP:
-            if (!frequencyController) return;
-            evt = frequencyController->createNav1FlipEvent();
-            break;
-        case EventType::REQUEST_NAV1_FREQ:
-            if (!frequencyController) return;
-            evt = frequencyController->requestNav1Frequency();
+            evt = frequencyController->requestFrequency();
             break;
         case EventType::BRAKE_SET: {
             evt.type = type;
@@ -89,10 +69,6 @@ void MSFSController::queueEvent(EventType type) {
             updateEvt.type = EventType::REQUEST_COM1_FREQ;
             updateEvt.name = "Async Request COM1 Frequency";
             updateEvt.simEventName = "COM1_FREQ_REQUEST";
-        } else if (instrumentKey == "NAV1") {
-            updateEvt.type = EventType::REQUEST_NAV1_FREQ;
-            updateEvt.name = "Async Request NAV1 Frequency";
-            updateEvt.simEventName = "NAV1_FREQ_REQUEST";
         }
         updateEvt.state = MsfsEventState::Ready;
         eventQueue.push(updateEvt);
@@ -154,27 +130,6 @@ void MSFSController::markInstrumentUpdateComplete(const std::string& instrumentK
                             evt.name = "COM1 Frequency (COARSE_DOWN)";
                             evt.data = frequencyController->getCurrentFreqHz();
                             break;
-                        // NAV1
-                        case EventType::NAV1_FREQ_FINE_UP:
-                            frequencyController->increaseNav1Fine();
-                            evt.name = "NAV1 Frequency (FINE_UP)";
-                            evt.data = frequencyController->getCurrentNav1FreqHz();
-                            break;
-                        case EventType::NAV1_FREQ_FINE_DOWN:
-                            frequencyController->decreaseNav1Fine();
-                            evt.name = "NAV1 Frequency (FINE_DOWN)";
-                            evt.data = frequencyController->getCurrentNav1FreqHz();
-                            break;
-                        case EventType::NAV1_FREQ_COARSE_UP:
-                            frequencyController->increaseNav1Coarse();
-                            evt.name = "NAV1 Frequency (COARSE_UP)";
-                            evt.data = frequencyController->getCurrentNav1FreqHz();
-                            break;
-                        case EventType::NAV1_FREQ_COARSE_DOWN:
-                            frequencyController->decreaseNav1Coarse();
-                            evt.name = "NAV1 Frequency (COARSE_DOWN)";
-                            evt.data = frequencyController->getCurrentNav1FreqHz();
-                            break;
                         default:
                             break;
                     }
@@ -220,20 +175,15 @@ MSFSController::MSFSController() : bridge() {
 
 // #############################################################################
 void MSFSController::dispatchEvent(const MsfsEvent& evt) {
-    if (evt.type == EventType::REQUEST_COM1_FREQ || evt.type == EventType::REQUEST_NAV1_FREQ) {
+    if (evt.type == EventType::REQUEST_COM1_FREQ) {
         // Async: launch frequency fetch in a separate thread
-        std::string instrumentKey = (evt.type == EventType::REQUEST_COM1_FREQ) ? "COM1" : "NAV1";
+        std::string instrumentKey = "COM1";
         Logger::log("[ASYNC] Starting async cockpit fetch for " + instrumentKey);
         std::thread([this, instrumentKey, evt]() {
             bool success = false;
             if (frequencyController) {
-                if (instrumentKey == "COM1") {
-                    unsigned int freq = frequencyController->fetchCom1FreqNonBlocking();
-                    success = (freq != 0);
-                } else if (instrumentKey == "NAV1") {
-                    unsigned int freq = frequencyController->fetchNav1FreqNonBlocking();
-                    success = (freq != 0);
-                }
+                unsigned int freq = frequencyController->fetchFreqNonBlocking();
+                success = (freq != 0);
             }
             this->markInstrumentUpdateComplete(instrumentKey, success);
         }).detach();

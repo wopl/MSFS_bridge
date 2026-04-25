@@ -12,7 +12,7 @@ endif()
 cmake_minimum_required(VERSION 3.10)
 project(MSFS_bridge)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 
 
